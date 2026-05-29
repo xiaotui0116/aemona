@@ -26,6 +26,34 @@ const AemonaDB = {
   }
 };
 
+// 新增：情绪映射逻辑
+AemonaDB.getEmotionResult = function(answers) {
+  // 简单规则：根据第1题（强度）和第4题（应对方式）决定主情绪
+  const intensity = answers[0] ? answers[0].a : "Medium";
+  const coping = answers[3] ? answers[3].a : "Trying to understand it";
+
+  let primary = "Fear";
+  let secondary = "Anger";
+
+  if (intensity === "High" || intensity === "Overwhelming") {
+    primary = "Anger";
+    secondary = "Fear";
+  } else if (coping.includes("Suppressing") || coping.includes("Distracting")) {
+    primary = "Sadness";
+    secondary = "Shame";
+  } else if (coping.includes("Talking") || coping === "Expression") {
+    primary = "Joy";
+    secondary = "Fear";
+  }
+
+  return {
+    primary: primary,
+    secondary: secondary,
+    type: primary + " vs " + secondary,
+    description: "Unstable Orbit"
+  };
+};
+
 function saveToLocalStorage() {
   localStorage.setItem('aemona_db', JSON.stringify(AemonaDB));
 }
