@@ -1,4 +1,43 @@
 let currentSession = { story: "", questions: [], emotionPairs: [], visual: {}, regulationUsed: "" };
+let previousScreen = 'home';   // 记录点击 Archive 之前的页面
+
+// ==================== 8个均衡星球系统 ====================
+const emotionVisuals = [
+  { id: 1, variant: 1, name: "Volcano Storm", color: "#f87171", desc: "Fear vs Anger - 火山风暴" },
+  { id: 2, variant: 2, name: "Rainy Clouds", color: "#60a5fa", desc: "Sadness vs Shame - 阴雨连绵" },
+  { id: 3, name: "Sun Rainbow", color: "#fde047", desc: "Joy vs Fear - 阳光彩虹", variant: 3 },
+  { id: 4, name: "Fog Valley", color: "#64748b", desc: "Fear vs Sadness - 雾气笼罩", variant: 4 },
+  { id: 5, name: "Cracked Sun", color: "#facc15", desc: "Joy vs Shame - 明亮裂痕", variant: 5 },
+  { id: 6, name: "Thunder Orbit", color: "#475569", desc: "Anger vs Fear - 雷霆轨道", variant: 6 },
+  { id: 7, name: "Clear After Rain", color: "#67e8f9", desc: "Sadness vs Joy - 雨后初晴", variant: 7 },
+  { id: 8, name: "Unstable Core", color: "#fb7185", desc: "Mixed Tension - 不稳定核心", variant: 8 }
+];
+
+// 平衡计数器
+let visualCounts = JSON.parse(localStorage.getItem('aemonaVisualCounts')) || 
+  emotionVisuals.reduce((acc, v) => { acc[v.id] = 0; return acc; }, {});
+
+// 选择最均衡的视觉
+function selectBalancedVisual() {
+  const minCount = Math.min(...Object.values(visualCounts));
+  const candidates = emotionVisuals.filter(v => visualCounts[v.id] === minCount);
+  
+  const selected = candidates[Math.floor(Math.random() * candidates.length)];
+  
+  visualCounts[selected.id]++;
+  localStorage.setItem('aemonaVisualCounts', JSON.stringify(visualCounts));
+  
+  return selected;
+}
+
+// 重置计数（调试用，可在首页加按钮调用）
+function resetVisualCounts() {
+  localStorage.removeItem('aemonaVisualCounts');
+  visualCounts = emotionVisuals.reduce((acc, v) => { acc[v.id] = 0; return acc; }, {});
+  alert('星球出现计数已重置');
+}
+
+
 
 loadFromLocalStorage();
 
@@ -118,6 +157,36 @@ function showUniverse() {
     @keyframes orbit2 { from {transform:rotate(0deg) translate(100px) rotate(0deg);} to {transform:rotate(360deg) translate(100px) rotate(-360deg);} }
   `;
   document.head.appendChild(style);
+
+  const emotionResult = AemonaDB.getEmotionResult(currentSession.questions);
+  currentSession.emotionPairs = [emotionResult];
+
+  // === 新增：均衡选择视觉 ===
+  const visual = selectBalancedVisual();
+
+  const planetHTML = generatePlanetHTML(
+    emotionResult.primary, 
+    emotionResult.secondary, 
+    visual.variant   // 使用均衡选出的 variant
+  );
+
+  document.getElementById('main').innerHTML = `
+    <div id="universe-screen" class="screen active">
+      <h2>Your Emotion Universe</h2>
+      <p style="text-align:center; color:#666; margin-bottom:10px;">
+        ${emotionResult.primary} + ${emotionResult.secondary}
+      </p>
+      
+      <div style="text-align:center; margin:30px 0;">
+        ${planetHTML}
+      </div>
+
+      <div style="text-align:center; margin-top:30px;">
+        <button onclick="saveCurrentSession()" style="padding:14px 32px; font-size:17px; background:#8a6f5e;">💾 Save to Memory Archive</button>
+        <button onclick="showRegulation()" style="padding:14px 32px; font-size:17px; margin-left:15px;">Continue to Regulation →</button>
+      </div>
+    </div>
+  `;
 }
 
 function showRegulation() {
@@ -422,17 +491,21 @@ function showUniverse() {
     });
   });
 
-  // 根据答案生成情绪
+  // 根据答案生成情绪和变体
   const emotionResult = AemonaDB.getEmotionResult(currentSession.questions);
   currentSession.emotionPairs = [emotionResult];
 
-  // 根据情绪生成不同星球样式
-  const planetHTML = generatePlanetHTML(emotionResult.primary, emotionResult.secondary);
+  // 生成对应星球
+  const planetHTML = generatePlanetHTML(
+    emotionResult.primary, 
+    emotionResult.secondary, 
+    emotionResult.variant
+  );
 
   document.getElementById('main').innerHTML = `
     <div id="universe-screen" class="screen active">
       <h2>Your Emotion Universe</h2>
-      <p style="text-align:center; color:#666;">${emotionResult.primary} + ${emotionResult.secondary}</p>
+      <p style="text-align:center; color:#666; margin-bottom:10px;">${emotionResult.primary} + ${emotionResult.secondary}</p>
       
       <div style="text-align:center; margin:30px 0;">
         ${planetHTML}
@@ -446,47 +519,108 @@ function showUniverse() {
   `;
 }
 
-function generatePlanetHTML(primary, secondary) {
-  let bg = "#4ade80";        // 默认绿色
+function generatePlanetHTML(primary, secondary, variant = 8) {
+  let bg = "#4ade80";
   let terrain = "";
+  let label = `${primary} + ${secondary}`;
 
-  if (primary === "Anger" || secondary === "Anger") {
-    bg = "#f87171";
-    terrain = `
-      <div style="position:absolute; bottom:30px; left:40px; width:0; height:0; border-left:50px solid transparent; border-right:70px solid transparent; border-bottom:90px solid #b91c1c;"></div>
-      <div style="position:absolute; top:70px; left:80px; font-size:40px;">☁️</div>
-      <div style="position:absolute; top:50px; right:60px; width:65px; height:65px; background:#fbbf24; border-radius:50%; box-shadow:0 0 35px #fcd34d;"></div>
-    `;
-  } 
-  else if (primary === "Sadness" || secondary === "Shame") {
-    bg = "#60a5fa";
-    terrain = `
-      <div style="position:absolute; bottom:40px; left:50px; width:120px; height:18px; background:#93c5fd; border-radius:30px;"></div>
-      <div style="position:absolute; top:60px; left:90px; font-size:50px; opacity:0.6;">☁️</div>
-      <div style="position:absolute; bottom:80px; right:70px; width:18px; height:65px; background:#334155;"></div>
-    `;
-  } 
-  else if (primary === "Joy") {
-    bg = "#fde047";
-    terrain = `
-      <div style="position:absolute; bottom:45px; left:60px; width:0; height:0; border-left:45px solid transparent; border-right:55px solid transparent; border-bottom:85px solid #eab308;"></div>
-      <div style="position:absolute; top:55px; right:70px; font-size:45px;">☀️</div>
-      <div style="position:absolute; bottom:55px; left:200px; font-size:38px;">🌳</div>
-    `;
+  switch(variant) {
+    case 1: // 1. Volcano Storm - 火山爆发（强烈红色）
+      bg = "#f87171";
+      terrain = `
+        <div style="position:absolute; bottom:20px; left:30px; width:0; height:0; border-left:75px solid transparent; border-right:95px solid transparent; border-bottom:145px solid #b91c1c;"></div>
+        <div style="position:absolute; top:40px; left:80px; font-size:72px;">🌋</div>
+        <div style="position:absolute; top:68px; right:50px; width:80px; height:80px; background:#fbbf24; border-radius:50%; box-shadow:0 0 60px #fcd34d;"></div>
+      `;
+      break;
+
+    case 2: // 2. Rainy Clouds - 阴雨连绵
+      bg = "#60a5fa";
+      terrain = `
+        <div style="position:absolute; bottom:28px; left:35px; width:175px; height:30px; background:#93c5fd; border-radius:50px;"></div>
+        <div style="position:absolute; top:52px; left:60px; font-size:72px;">☁️</div>
+        <div style="position:absolute; top:78px; left:92px; font-size:52px;">☂️</div>
+      `;
+      break;
+
+    case 3: // 3. Sun Rainbow - 明亮阳光 + 彩虹（黄色主调）
+      bg = "#fde047";
+      terrain = `
+        <div style="position:absolute; top:38px; right:55px; font-size:78px;">☀️</div>
+        <div style="position:absolute; bottom:52px; left:70px; width:0; height:0; border-left:65px solid transparent; border-right:75px solid transparent; border-bottom:110px solid #4ade80;"></div>
+        <div style="position:absolute; bottom:45px; left:155px; font-size:42px; transform:rotate(12deg);">🌈</div>
+      `;
+      break;
+
+    case 4: // 4. Fog Valley - 雾气笼罩
+      bg = "#64748b";
+      terrain = `
+        <div style="position:absolute; top:72px; left:50px; width:130px; height:52px; background:#e2e8f0; border-radius:50%; opacity:0.7;"></div>
+        <div style="position:absolute; bottom:35px; left:42px; width:160px; height:24px; background:#cbd5e1; border-radius:50px; opacity:0.85;"></div>
+        <div style="position:absolute; top:48px; right:65px; font-size:58px; opacity:0.65;">🌫️</div>
+      `;
+      break;
+
+    case 5: // 5. Cracked Sun - 金色裂痕
+      bg = "#facc15";
+      terrain = `
+        <div style="position:absolute; bottom:45px; left:52px; width:0; height:0; border-left:68px solid transparent; border-right:78px solid transparent; border-bottom:115px solid #eab308;"></div>
+        <div style="position:absolute; top:45px; right:58px; font-size:68px;">☀️</div>
+        <div style="position:absolute; bottom:62px; left:108px; width:7px; height:95px; background:#78350f; transform:rotate(35deg);"></div>
+      `;
+      break;
+
+    case 6: // 6. Thunder Orbit - 深色雷霆
+      bg = "#475569";
+      terrain = `
+        <div style="position:absolute; top:35px; left:65px; font-size:82px;">🌩️</div>
+        <div style="position:absolute; bottom:30px; left:45px; width:0; height:0; border-left:72px solid transparent; border-right:92px solid transparent; border-bottom:105px solid #334155;"></div>
+      `;
+      break;
+
+    case 7: // 7. Clear After Rain - 青色雨后初晴（明显不同！）
+      bg = "#67e8f9";
+      terrain = `
+        <div style="position:absolute; top:55px; left:75px; font-size:65px;">☁️</div>
+        <div style="position:absolute; bottom:40px; left:65px; width:0; height:0; border-left:58px solid transparent; border-right:78px solid transparent; border-bottom:98px solid #22c55e;"></div>
+        <div style="position:absolute; top:42px; right:65px; font-size:58px;">🌈</div>
+        <div style="position:absolute; top:68px; left:120px; font-size:32px; opacity:0.9;">✨</div>
+      `;
+      break;
+
+    case 8: // 8. Unstable Core - 紫红不稳定核心
+      bg = "#fb7185";
+      terrain = `
+        <div style="position:absolute; bottom:32px; left:42px; width:0; height:0; border-left:62px solid transparent; border-right:85px solid transparent; border-bottom:118px solid #e11d48;"></div>
+        <div style="position:absolute; top:52px; right:60px; font-size:62px;">🔥</div>
+        <div style="position:absolute; bottom:65px; left:102px; width:10px; height:82px; background:#6b21a8; transform:rotate(-38deg); box-shadow:0 0 15px #a855f7;"></div>
+      `;
+      break;
+
+    default:
+      bg = "#e0f2fe";
+      terrain = `<div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:90px;">🌌</div>`;
   }
 
   return `
-    <div style="width:380px; height:380px; margin:auto; background: radial-gradient(circle at 40% 30%, #fff, ${bg}); border-radius:50%; position:relative; box-shadow: 0 0 60px rgba(0,0,0,0.25); overflow:hidden; border:12px solid #78350f;">
+    <div style="width:400px; height:400px; margin:auto; background: radial-gradient(circle at 48% 38%, #ffffff, ${bg}); border-radius:50%; position:relative; box-shadow: 0 0 75px rgba(0,0,0,0.4); overflow:hidden; border:16px solid #78350f;">
       ${terrain}
-      <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; color:white; text-shadow:0 2px 10px rgba(0,0,0,0.7);">
-        <div style="font-size:24px; font-weight:bold;">${primary} + ${secondary}</div>
-        <div style="font-size:15px; margin-top:6px;">Unstable Orbit</div>
+      <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; color:white; text-shadow:0 4px 15px rgba(0,0,0,0.75); font-size:26px; font-weight:bold; pointer-events:none;">
+        ${label}
       </div>
     </div>
   `;
 }
 
 function showArchive() {
+  // 记录当前页面（用于返回）
+  if (!document.getElementById('archive-screen')) {
+    previousScreen = 'home'; // 默认
+    // 简单判断当前所在页面
+    if (document.getElementById('universe-screen')) previousScreen = 'universe';
+    else if (document.getElementById('regulation-screen')) previousScreen = 'regulation';
+  }
+
   let html = `
     <div id="archive-screen" class="screen active">
       <h2>Memory Archive</h2>
@@ -494,22 +628,90 @@ function showArchive() {
   `;
 
   if (AemonaDB.sessions.length === 0) {
-    html += `<p style="text-align:center; padding:60px 20px; color:#888;">No entries yet.<br>Start writing to create your first memory.</p>`;
+    html += `<p style="text-align:center; padding:80px 20px; color:#888;">No entries yet.<br>Start exploring to create your first memory.</p>`;
   } else {
-    AemonaDB.sessions.forEach(s => {
+    AemonaDB.sessions.forEach((s) => {
       html += `
-        <div style="background:#f9f5f0; padding:20px; border-radius:12px; margin:15px 0; border-left:5px solid #8a6f5e;">
+        <div style="background:#f9f5f0; padding:20px; border-radius:12px; margin:15px 0; border-left:6px solid #8a6f5e;">
           <strong>${s.date} ${s.time}</strong><br><br>
-          <p style="line-height:1.5;">${s.story}</p>
-          ${s.visual && s.visual.description ? `<p style="color:#8a6f5e; margin-top:10px;">${s.visual.description}</p>` : ''}
+          <p style="line-height:1.5; margin-bottom:10px;">${s.story.substring(0, 180)}${s.story.length > 180 ? '...' : ''}</p>
+          ${s.emotionPairs && s.emotionPairs.length > 0 ? `<p style="color:#8a6f5e;">${s.emotionPairs[0].primary} + ${s.emotionPairs[0].secondary}</p>` : ''}
         </div>`;
     });
   }
 
-  html += `<br><button onclick="goHome()">Back to Home</button></div>`;
+  html += `
+    <br>
+    <button onclick="goBack()" style="padding:12px 28px; background:#6b5749;">← Back to Previous Page</button>
+    <button onclick="goHome()" style="padding:12px 28px; margin-left:12px;">Back to Home</button>
+  </div>`;
   
   document.getElementById('main').innerHTML = html;
 }
 
+function goBack() {
+  if (previousScreen === 'universe') {
+    showUniverse();           // 返回情绪宇宙
+  } else if (previousScreen === 'regulation') {
+    showRegulation();         // 返回调节页面
+  } else {
+    goHome();                 // 默认返回首页
+  }
+}
+
+// ==================== 加强版情绪结果生成（确保8个variant都能稳定触发） ====================
+AemonaDB.getEmotionResult = function(answers) {
+  const intensity = answers[0] ? answers[0].a : "Medium";
+  const source = answers[1] ? answers[1].a : "My Thoughts";
+  const duration = answers[2] ? answers[2].a : "A few hours";
+  const coping = answers[3] ? answers[3].a : "Trying to understand it";
+  const need = answers[4] ? answers[4].a : "To be understood";
+
+  let primary = "Fear";
+  let secondary = "Anger";
+  let variant = 6;
+
+  // 优先级调整：让每个variant都有清晰路径
+  if (coping.includes("Talking") || coping.includes("Expression")) {
+    if (duration.includes("Several days") || duration.includes("Long time")) {
+      // === Variant 7: 雨后初晴 ===
+      primary = "Sadness";
+      secondary = "Joy";
+      variant = 7;
+    } 
+    else if (intensity === "Medium" || intensity === "Low") {
+      // Variant 3: 阳光彩虹
+      primary = "Joy";
+      secondary = "Fear";
+      variant = 3;
+    }
+  } 
+  else if (intensity === "Overwhelming" || intensity === "High") {
+    if (source.includes("People")) {
+      primary = "Anger"; secondary = "Fear"; variant = 1;
+    } else {
+      primary = "Fear"; secondary = "Anger"; variant = 6;
+    }
+  } 
+  else if (coping.includes("Suppressing") || coping.includes("Distracting")) {
+    primary = "Sadness"; secondary = "Shame"; variant = 2;
+  } 
+  else if (source.includes("Environment")) {
+    primary = "Fear"; secondary = "Sadness"; variant = 4;
+  } 
+  else if (intensity === "Low") {
+    primary = "Joy"; secondary = "Shame"; variant = 5;
+  } 
+  else if (coping.includes("Trying to understand it")) {
+    primary = "Fear"; secondary = "Anger"; variant = 8;
+  }
+
+  return {
+    primary: primary,
+    secondary: secondary,
+    variant: variant,
+    description: "Unstable Orbit"
+  };
+};
 // 初始化
 showHome();

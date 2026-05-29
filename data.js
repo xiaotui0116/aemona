@@ -26,34 +26,67 @@ const AemonaDB = {
   }
 };
 
-// 新增：情绪映射逻辑
+// ==================== 增强版情绪结果生成（支持8个星球） ====================
 AemonaDB.getEmotionResult = function(answers) {
-  // 简单规则：根据第1题（强度）和第4题（应对方式）决定主情绪
   const intensity = answers[0] ? answers[0].a : "Medium";
+  const source = answers[1] ? answers[1].a : "My Thoughts";
+  const duration = answers[2] ? answers[2].a : "A few hours";
   const coping = answers[3] ? answers[3].a : "Trying to understand it";
+  const need = answers[4] ? answers[4].a : "To be understood";
 
   let primary = "Fear";
   let secondary = "Anger";
+  let variant = 6;   // 默认
 
-  if (intensity === "High" || intensity === "Overwhelming") {
-    primary = "Anger";
-    secondary = "Fear";
-  } else if (coping.includes("Suppressing") || coping.includes("Distracting")) {
-    primary = "Sadness";
-    secondary = "Shame";
-  } else if (coping.includes("Talking") || coping === "Expression") {
-    primary = "Joy";
-    secondary = "Fear";
+  // 8种组合逻辑（覆盖所有variant）
+  if (intensity === "Overwhelming" || intensity === "High") {
+    if (source.includes("People") || source.includes("Environment")) {
+      primary = "Anger"; secondary = "Fear"; variant = 1;   // 火山风暴
+    } else {
+      primary = "Fear"; secondary = "Anger"; variant = 6;   // 雷霆轨道
+    }
+  } 
+  else if (coping.includes("Suppressing") || coping.includes("Distracting")) {
+    if (need.includes("Rest") || duration.includes("Long time")) {
+      primary = "Sadness"; secondary = "Shame"; variant = 2; // 阴雨连绵
+    } else {
+      primary = "Fear"; secondary = "Sadness"; variant = 4;  // 雾气笼罩
+    }
+  } 
+  else if (coping.includes("Talking") || coping.includes("Expression")) {
+    if (intensity === "Low" || intensity === "Medium") {
+      primary = "Joy"; secondary = "Fear"; variant = 3;      // 阳光彩虹
+    } else {
+      primary = "Joy"; secondary = "Shame"; variant = 5;     // 明亮裂痕
+    }
+  } 
+  else if (source.includes("Environment") || source.includes("Body")) {
+    primary = "Fear"; secondary = "Sadness"; variant = 4;    // 雾气笼罩
+  } 
+  else if (intensity === "Low") {
+    primary = "Joy"; secondary = "Shame"; variant = 5;       // 明亮裂痕
+  } 
+  else if (coping.includes("Trying to understand")) {
+    if (need.includes("Expression")) {
+      primary = "Sadness"; secondary = "Joy"; variant = 7;   // 雨后初晴
+    } else {
+      primary = "Fear"; secondary = "Anger"; variant = 8;    // 不稳定核心
+    }
+  } 
+  else {
+    // 兜底组合
+    primary = "Anger"; secondary = "Shame"; variant = 1;
   }
 
   return {
     primary: primary,
     secondary: secondary,
-    type: primary + " vs " + secondary,
+    variant: variant,
     description: "Unstable Orbit"
   };
 };
 
+// ==================== 本地存储功能 ====================
 function saveToLocalStorage() {
   localStorage.setItem('aemona_db', JSON.stringify(AemonaDB));
 }
@@ -61,7 +94,8 @@ function saveToLocalStorage() {
 function loadFromLocalStorage() {
   const saved = localStorage.getItem('aemona_db');
   if (saved) {
-    Object.assign(AemonaDB, JSON.parse(saved));
+    const parsed = JSON.parse(saved);
+    Object.assign(AemonaDB, parsed);
   }
 }
 
