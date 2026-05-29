@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aemona</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Welcome -->
+  <div class="page show" id="welcome">
+    <h1>Aemona</h1>
+    <p>A soft place for feelings that are hard to name</p>
+    <button onclick="go('onboarding')">Start</button>
+  </div>
+
+  <!-- Onboarding -->
+  <div class="page" id="onboarding">
+    <h2>Tell us about you</h2>
+    <div id="onboardBox"></div>
+    <button onclick="finishOnboarding()">Save Profile</button>
+  </div>
+
+  <!-- Calendar -->
+  <div class="page" id="calendar">
+    <h2>Memory Archive</h2>
+    <div class="calendar-header"><span id="calendar-month-year"></span></div>
+    <div class="calendar-weekdays">
+      <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+    </div>
+    <div class="calendar-grid" id="calendar-grid"></div>
+
+    <!-- Today's Records (Multiple Entries) -->
+    <div class="today-history-container">
+      <h3>Today’s Records</h3>
+      <div id="today-history-list" class="today-history-list"></div>
+    </div>
+
+    <div class="fab-menu">
+      <div class="fab">+</div>
+      <div class="fab-items">
+        <div onclick="go('today')">Today Record</div>
+        <div onclick="go('reg-drag')">Drag → Release Pressure</div>
+        <div onclick="go('reg-pinch')">Pinch → Release Pressure</div>
+        <div onclick="go('reg-breath')">Breath → Slow Breathing</div>
+        <div onclick="go('reg-clear')">Clear → Create Space</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Today Story -->
+  <div class="page" id="today">
+    <h2>What happened today?</h2>
+    <textarea id="story" placeholder="Type here..."></textarea>
+    <button onclick="goToQuestions()">生成题目</button>
+  </div>
+
+  <!-- Questions -->
+  <div class="page" id="questions">
+    <h2>Explore your feeling</h2>
+    <div id="qBox"></div>
+    <button onclick="generatePlanet()">Generate Planet</button>
+  </div>
+
+  <!-- Result -->
+  <div class="page" id="result">
+    <h2>Your Emotion Planet</h2>
+    <div class="planet-view"></div>
+    <p class="analysis-text"></p>
+    <div class="double-btn">
+      <button onclick="saveToCalendar()">Save</button>
+      <button onclick="go('today')">Retry</button>
+    </div>
+  </div>
+
+  <!-- 4 Regulation Functions -->
+  <div class="page" id="reg-drag">
+    <h2>Drag → Release Pressure</h2>
+    <div class="drag-area"><div class="drag-ball"></div></div>
+    <button onclick="go('calendar')">Back</button>
+  </div>
+
+  <div class="page" id="reg-pinch">
+    <h2>Pinch → Release Pressure</h2>
+    <div class="pinch-area"><div class="pinch-ball"></div></div>
+    <button onclick="go('calendar')">Back</button>
+  </div>
+
+  <div class="page" id="reg-breath">
+    <h2>Breath → Slow Breathing</h2>
+    <div class="breath-circle"></div>
+    <button onclick="go('calendar')">Back</button>
+  </div>
+
+  <div class="page" id="reg-clear">
+    <h2>Clear → Create Space</h2>
+    <div class="clear-area" id="clearArea"></div>
+    <button onclick="go('calendar')">Back</button>
+  </div>
+
+</div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
