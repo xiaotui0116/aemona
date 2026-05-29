@@ -357,7 +357,21 @@ function makeDraggableFar() {
   // 类似 drag，但更自由
   makeDraggable();
 }
+// ==================== 全局导航 ====================
+function goHome() {
+  currentSession = { story: "", questions: [], emotionPairs: [], visual: {}, regulationUsed: "" };
+  showHome();
+}
 
+function goTo(screen) {
+  if (screen === 'home') {
+    goHome();
+    return;
+  }
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  let target = document.getElementById(screen + '-screen');
+  if (target) target.classList.add('active');
+}
 function saveCurrentSession() {
   currentSession.visual = { type: "unstable_orbit", description: "Fear vs Anger" };
   currentSession.emotionPairs = [{ primary: "Fear", secondary: "Anger" }];
