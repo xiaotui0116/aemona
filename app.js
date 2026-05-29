@@ -413,6 +413,7 @@ function saveCurrentSession() {
   }
 }
 function showUniverse() {
+  // 收集答案
   currentSession.questions = [];
   document.querySelectorAll('select').forEach((sel, i) => {
     currentSession.questions.push({
@@ -421,42 +422,20 @@ function showUniverse() {
     });
   });
 
+  // 根据答案生成情绪
+  const emotionResult = AemonaDB.getEmotionResult(currentSession.questions);
+  currentSession.emotionPairs = [emotionResult];
+
+  // 根据情绪生成不同星球样式
+  const planetHTML = generatePlanetHTML(emotionResult.primary, emotionResult.secondary);
+
   document.getElementById('main').innerHTML = `
     <div id="universe-screen" class="screen active">
       <h2>Your Emotion Universe</h2>
-      <p style="text-align:center; color:#666; margin-bottom:20px;">Mixed emotions are forming a living planet...</p>
+      <p style="text-align:center; color:#666;">${emotionResult.primary} + ${emotionResult.secondary}</p>
       
       <div style="text-align:center; margin:30px 0;">
-        <div id="main-planet" style="width:380px; height:380px; margin:auto; background: radial-gradient(circle at 40% 30%, #4ade80, #22c55e, #15803d); border-radius:50%; position:relative; box-shadow: 0 0 60px rgba(0,0,0,0.2); overflow:hidden; border:8px solid #78350f;">
-          
-          <!-- 山 -->
-          <div style="position:absolute; bottom:40px; left:30px; width:0; height:0; border-left:60px solid transparent; border-right:80px solid transparent; border-bottom:110px solid #166534;"></div>
-          <div style="position:absolute; bottom:55px; left:90px; width:0; height:0; border-left:50px solid transparent; border-right:70px solid transparent; border-bottom:95px solid #4ade80;"></div>
-          
-          <!-- 树 -->
-          <div style="position:absolute; bottom:45px; left:220px; width:18px; height:70px; background:#78350f;"></div>
-          <div style="position:absolute; bottom:100px; left:205px; width:45px; height:45px; background:#166534; border-radius:50%;"></div>
-          
-          <!-- 河流 -->
-          <div style="position:absolute; bottom:25px; left:40px; width:180px; height:12px; background:#60a5fa; transform:rotate(-12deg); border-radius:20px; opacity:0.7;"></div>
-          
-          <!-- 太阳 -->
-          <div style="position:absolute; top:60px; right:70px; width:55px; height:55px; background:#fbbf24; border-radius:50%; box-shadow:0 0 30px #fcd34d;"></div>
-          
-          <!-- 乌云 -->
-          <div style="position:absolute; top:80px; left:60px; width:90px; height:35px; background:#64748b; border-radius:50%; opacity:0.75;"></div>
-          <div style="position:absolute; top:75px; left:85px; width:65px; height:40px; background:#64748b; border-radius:50%;"></div>
-          
-          <!-- 暴雨效果 -->
-          <div style="position:absolute; top:100px; left:80px; width:3px; height:60px; background:#93c5fd; animation: rain 0.6s linear infinite;"></div>
-          <div style="position:absolute; top:95px; left:110px; width:3px; height:55px; background:#93c5fd; animation: rain 0.8s linear infinite;"></div>
-          
-          <!-- 情绪标签 -->
-          <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; color:white; text-shadow:0 2px 8px rgba(0,0,0,0.6);">
-            <div style="font-size:22px; font-weight:bold;">Fear + Anger</div>
-            <div style="font-size:14px; margin-top:8px;">Unstable Orbit</div>
-          </div>
-        </div>
+        ${planetHTML}
       </div>
 
       <div style="text-align:center; margin-top:30px;">
@@ -465,17 +444,46 @@ function showUniverse() {
       </div>
     </div>
   `;
+}
 
-  // 添加雨滴动画
-  const style = document.createElement('style');
-  style.innerHTML = `
-    @keyframes rain {
-      0% { transform: translateY(-30px); }
-      100% { transform: translateY(120px); }
-    }
-    .planet { position:absolute; top:50%; left:50%; width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; transform:translate(-50%,-50%); }
+function generatePlanetHTML(primary, secondary) {
+  let bg = "#4ade80";        // 默认绿色
+  let terrain = "";
+
+  if (primary === "Anger" || secondary === "Anger") {
+    bg = "#f87171";
+    terrain = `
+      <div style="position:absolute; bottom:30px; left:40px; width:0; height:0; border-left:50px solid transparent; border-right:70px solid transparent; border-bottom:90px solid #b91c1c;"></div>
+      <div style="position:absolute; top:70px; left:80px; font-size:40px;">☁️</div>
+      <div style="position:absolute; top:50px; right:60px; width:65px; height:65px; background:#fbbf24; border-radius:50%; box-shadow:0 0 35px #fcd34d;"></div>
+    `;
+  } 
+  else if (primary === "Sadness" || secondary === "Shame") {
+    bg = "#60a5fa";
+    terrain = `
+      <div style="position:absolute; bottom:40px; left:50px; width:120px; height:18px; background:#93c5fd; border-radius:30px;"></div>
+      <div style="position:absolute; top:60px; left:90px; font-size:50px; opacity:0.6;">☁️</div>
+      <div style="position:absolute; bottom:80px; right:70px; width:18px; height:65px; background:#334155;"></div>
+    `;
+  } 
+  else if (primary === "Joy") {
+    bg = "#fde047";
+    terrain = `
+      <div style="position:absolute; bottom:45px; left:60px; width:0; height:0; border-left:45px solid transparent; border-right:55px solid transparent; border-bottom:85px solid #eab308;"></div>
+      <div style="position:absolute; top:55px; right:70px; font-size:45px;">☀️</div>
+      <div style="position:absolute; bottom:55px; left:200px; font-size:38px;">🌳</div>
+    `;
+  }
+
+  return `
+    <div style="width:380px; height:380px; margin:auto; background: radial-gradient(circle at 40% 30%, #fff, ${bg}); border-radius:50%; position:relative; box-shadow: 0 0 60px rgba(0,0,0,0.25); overflow:hidden; border:12px solid #78350f;">
+      ${terrain}
+      <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; color:white; text-shadow:0 2px 10px rgba(0,0,0,0.7);">
+        <div style="font-size:24px; font-weight:bold;">${primary} + ${secondary}</div>
+        <div style="font-size:15px; margin-top:6px;">Unstable Orbit</div>
+      </div>
+    </div>
   `;
-  document.head.appendChild(style);
 }
 
 function showArchive() {
