@@ -20,6 +20,32 @@ function showHome() {
   `;
 }
 
+// 首页快速保存
+function quickSave() {
+  const story = document.getElementById('story-input').value.trim();
+  
+  if (!story) {
+    alert("Please write something before saving.");
+    return;
+  }
+
+  const sessionData = {
+    story: story,
+    questions: [],
+    emotionPairs: [],
+    visual: { type: "quick_entry", description: "Quick Saved Entry" },
+    regulationUsed: "none",
+    note: "Quick saved from home"
+  };
+
+  addSession(sessionData);
+  alert("✅ Saved to Memory Archive!");
+
+  // 清空输入框
+  document.getElementById('story-input').value = "";
+}
+
+
 function startJourney() {
   const story = document.getElementById('story-input').value.trim() || "I had dinner with friends but felt weird the whole time.";
   currentSession.story = story;
@@ -377,26 +403,75 @@ function saveCurrentSession() {
   currentSession.emotionPairs = [{ primary: "Fear", secondary: "Anger" }];
 
   addSession(currentSession);
-  alert("✅ Session saved to Memory Archive!");
+  alert("✅ Session has been saved to Memory Archive!");
 
-  showArchive();
+  // 保存后可以选择回到首页或继续
+  if (confirm("Go to Memory Archive now?")) {
+    showArchive();
+  } else {
+    goHome();
+  }
+}
+function showUniverse() {
+  // 收集用户在澄清阶段的答案
+  currentSession.questions = [];
+  document.querySelectorAll('select').forEach((sel, i) => {
+    currentSession.questions.push({
+      q: AemonaDB.questionBank[i],
+      a: sel.value
+    });
+  });
+
+  document.getElementById('main').innerHTML = `
+    <div id="universe-screen" class="screen active">
+      <h2>Your Emotion Universe</h2>
+      
+      <div style="text-align:center; margin:40px 0; position:relative;">
+        <div id="universe" style="width:420px; height:420px; margin:auto; border:3px solid #d4b8a0; border-radius:50%; overflow:hidden; position:relative;">
+          <div class="planet" style="background:#6366f1; animation: orbit1 15s linear infinite;">Fear</div>
+          <div class="planet" style="background:#ef4444; animation: orbit2 22s linear infinite reverse; width:55px; height:55px;">Anger</div>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin-top:30px;">
+        <button onclick="saveCurrentSession()" style="padding:14px 32px; font-size:17px; background:#8a6f5e;">💾 Save to Memory Archive</button>
+        <button onclick="showRegulation()" style="padding:14px 32px; font-size:17px; margin-left:15px;">Continue to Regulation</button>
+      </div>
+    </div>
+  `;
+
+  // 添加动画样式
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @keyframes orbit1 { from {transform:rotate(0deg) translate(140px) rotate(0deg);} to {transform:rotate(360deg) translate(140px) rotate(-360deg);} }
+    @keyframes orbit2 { from {transform:rotate(0deg) translate(100px) rotate(0deg);} to {transform:rotate(360deg) translate(100px) rotate(-360deg);} }
+    .planet { position:absolute; top:50%; left:50%; width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; transform:translate(-50%,-50%); }
+  `;
+  document.head.appendChild(style);
 }
 
 function showArchive() {
-  let html = `<div id="archive-screen" class="screen active"><h2>Memory Archive</h2>`;
-  
+  let html = `
+    <div id="archive-screen" class="screen active">
+      <h2>Memory Archive</h2>
+      <p style="color:#666;">Your emotional journey over time</p>
+  `;
+
   if (AemonaDB.sessions.length === 0) {
-    html += `<p>No records yet.</p>`;
+    html += `<p style="text-align:center; padding:60px 20px; color:#888;">No entries yet.<br>Start writing to create your first memory.</p>`;
   } else {
     AemonaDB.sessions.forEach(s => {
       html += `
-        <div style="background:#f0e6d8; padding:15px; border-radius:12px; margin:10px 0;">
-          <strong>${s.date} ${s.time}</strong><br>
-          ${s.story.substring(0, 65)}...
+        <div style="background:#f9f5f0; padding:20px; border-radius:12px; margin:15px 0; border-left:5px solid #8a6f5e;">
+          <strong>${s.date} ${s.time}</strong><br><br>
+          <p style="line-height:1.5;">${s.story}</p>
+          ${s.visual && s.visual.description ? `<p style="color:#8a6f5e; margin-top:10px;">${s.visual.description}</p>` : ''}
         </div>`;
     });
   }
-  html += `<button onclick="showHome()">Back to Home</button></div>`;
+
+  html += `<br><button onclick="goHome()">Back to Home</button></div>`;
+  
   document.getElementById('main').innerHTML = html;
 }
 
