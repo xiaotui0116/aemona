@@ -413,7 +413,6 @@ function saveCurrentSession() {
   }
 }
 function showUniverse() {
-  // 收集用户在澄清阶段的答案
   currentSession.questions = [];
   document.querySelectorAll('select').forEach((sel, i) => {
     currentSession.questions.push({
@@ -425,26 +424,55 @@ function showUniverse() {
   document.getElementById('main').innerHTML = `
     <div id="universe-screen" class="screen active">
       <h2>Your Emotion Universe</h2>
+      <p style="text-align:center; color:#666; margin-bottom:20px;">Mixed emotions are forming a living planet...</p>
       
-      <div style="text-align:center; margin:40px 0; position:relative;">
-        <div id="universe" style="width:420px; height:420px; margin:auto; border:3px solid #d4b8a0; border-radius:50%; overflow:hidden; position:relative;">
-          <div class="planet" style="background:#6366f1; animation: orbit1 15s linear infinite;">Fear</div>
-          <div class="planet" style="background:#ef4444; animation: orbit2 22s linear infinite reverse; width:55px; height:55px;">Anger</div>
+      <div style="text-align:center; margin:30px 0;">
+        <div id="main-planet" style="width:380px; height:380px; margin:auto; background: radial-gradient(circle at 40% 30%, #4ade80, #22c55e, #15803d); border-radius:50%; position:relative; box-shadow: 0 0 60px rgba(0,0,0,0.2); overflow:hidden; border:8px solid #78350f;">
+          
+          <!-- 山 -->
+          <div style="position:absolute; bottom:40px; left:30px; width:0; height:0; border-left:60px solid transparent; border-right:80px solid transparent; border-bottom:110px solid #166534;"></div>
+          <div style="position:absolute; bottom:55px; left:90px; width:0; height:0; border-left:50px solid transparent; border-right:70px solid transparent; border-bottom:95px solid #4ade80;"></div>
+          
+          <!-- 树 -->
+          <div style="position:absolute; bottom:45px; left:220px; width:18px; height:70px; background:#78350f;"></div>
+          <div style="position:absolute; bottom:100px; left:205px; width:45px; height:45px; background:#166534; border-radius:50%;"></div>
+          
+          <!-- 河流 -->
+          <div style="position:absolute; bottom:25px; left:40px; width:180px; height:12px; background:#60a5fa; transform:rotate(-12deg); border-radius:20px; opacity:0.7;"></div>
+          
+          <!-- 太阳 -->
+          <div style="position:absolute; top:60px; right:70px; width:55px; height:55px; background:#fbbf24; border-radius:50%; box-shadow:0 0 30px #fcd34d;"></div>
+          
+          <!-- 乌云 -->
+          <div style="position:absolute; top:80px; left:60px; width:90px; height:35px; background:#64748b; border-radius:50%; opacity:0.75;"></div>
+          <div style="position:absolute; top:75px; left:85px; width:65px; height:40px; background:#64748b; border-radius:50%;"></div>
+          
+          <!-- 暴雨效果 -->
+          <div style="position:absolute; top:100px; left:80px; width:3px; height:60px; background:#93c5fd; animation: rain 0.6s linear infinite;"></div>
+          <div style="position:absolute; top:95px; left:110px; width:3px; height:55px; background:#93c5fd; animation: rain 0.8s linear infinite;"></div>
+          
+          <!-- 情绪标签 -->
+          <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; color:white; text-shadow:0 2px 8px rgba(0,0,0,0.6);">
+            <div style="font-size:22px; font-weight:bold;">Fear + Anger</div>
+            <div style="font-size:14px; margin-top:8px;">Unstable Orbit</div>
+          </div>
         </div>
       </div>
 
       <div style="text-align:center; margin-top:30px;">
         <button onclick="saveCurrentSession()" style="padding:14px 32px; font-size:17px; background:#8a6f5e;">💾 Save to Memory Archive</button>
-        <button onclick="showRegulation()" style="padding:14px 32px; font-size:17px; margin-left:15px;">Continue to Regulation</button>
+        <button onclick="showRegulation()" style="padding:14px 32px; font-size:17px; margin-left:15px;">Continue to Regulation →</button>
       </div>
     </div>
   `;
 
-  // 添加动画样式
+  // 添加雨滴动画
   const style = document.createElement('style');
   style.innerHTML = `
-    @keyframes orbit1 { from {transform:rotate(0deg) translate(140px) rotate(0deg);} to {transform:rotate(360deg) translate(140px) rotate(-360deg);} }
-    @keyframes orbit2 { from {transform:rotate(0deg) translate(100px) rotate(0deg);} to {transform:rotate(360deg) translate(100px) rotate(-360deg);} }
+    @keyframes rain {
+      0% { transform: translateY(-30px); }
+      100% { transform: translateY(120px); }
+    }
     .planet { position:absolute; top:50%; left:50%; width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; transform:translate(-50%,-50%); }
   `;
   document.head.appendChild(style);
