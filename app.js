@@ -613,10 +613,9 @@ function generatePlanetHTML(primary, secondary, variant = 8) {
 }
 
 function showArchive() {
-  // 记录当前页面（用于返回）
+  // 记录返回位置
   if (!document.getElementById('archive-screen')) {
-    previousScreen = 'home'; // 默认
-    // 简单判断当前所在页面
+    previousScreen = 'home';
     if (document.getElementById('universe-screen')) previousScreen = 'universe';
     else if (document.getElementById('regulation-screen')) previousScreen = 'regulation';
   }
@@ -624,29 +623,105 @@ function showArchive() {
   let html = `
     <div id="archive-screen" class="screen active">
       <h2>Memory Archive</h2>
-      <p style="color:#666;">Your emotional journey over time</p>
-  `;
+      <p style="color:#666; margin-bottom:20px;">Click on a date to view your emotional records</p>
+      
+      <div id="calendar" style="background:#fff; border:1px solid #d4b8a0; border-radius:12px; padding:15px; max-width:700px; margin:0 auto;"></div>
+      
+      <div id="day-detail" style="margin-top:25px; min-height:200px;"></div>
+      
+      <br>
+      <button onclick="goBack()" style="padding:12px 28px; background:#6b5749;">← Back</button>
+      <button onclick="goHome()" style="padding:12px 28px; margin-left:12px;">Home</button>
+    </div>`;
 
-  if (AemonaDB.sessions.length === 0) {
-    html += `<p style="text-align:center; padding:80px 20px; color:#888;">No entries yet.<br>Start exploring to create your first memory.</p>`;
-  } else {
-    AemonaDB.sessions.forEach((s) => {
-      html += `
-        <div style="background:#f9f5f0; padding:20px; border-radius:12px; margin:15px 0; border-left:6px solid #8a6f5e;">
-          <strong>${s.date} ${s.time}</strong><br><br>
-          <p style="line-height:1.5; margin-bottom:10px;">${s.story.substring(0, 180)}${s.story.length > 180 ? '...' : ''}</p>
-          ${s.emotionPairs && s.emotionPairs.length > 0 ? `<p style="color:#8a6f5e;">${s.emotionPairs[0].primary} + ${s.emotionPairs[0].secondary}</p>` : ''}
-        </div>`;
-    });
+  document.getElementById('main').innerHTML = html;
+
+  renderCalendar();
+}
+
+// ==================== 日历渲染 ====================
+function renderCalendar() {
+  const container = document.getElementById('calendar');
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+  let calendarHTML = `
+    <div style="text-align:center; margin-bottom:15px; font-size:18px; font-weight:bold;">
+      ${today.toLocaleString('default', { month: 'long' })} ${currentYear}
+    </div>
+    <table style="width:100%; border-collapse:collapse; text-align:center;">
+      <thead>
+        <tr>
+          <th style="padding:8px; color:#666;">Sun</th>
+          <th style="padding:8px; color:#666;">Mon</th>
+          <th style="padding:8px; color:#666;">Tue</th>
+          <th style="padding:8px; color:#666;">Wed</th>
+          <th style="padding:8px; color:#666;">Thu</th>
+          <th style="padding:8px; color:#666;">Fri</th>
+          <th style="padding:8px; color:#666;">Sat</th>
+        </tr>
+      </thead>
+      <tbody><tr>`;
+
+  // 空白格子
+  for (let i = 0; i < firstDay; i++) {
+    calendarHTML += `<td style="padding:12px; color:#ccc;"> </td>`;
   }
 
-  html += `
-    <br>
-    <button onclick="goBack()" style="padding:12px 28px; background:#6b5749;">← Back to Previous Page</button>
-    <button onclick="goHome()" style="padding:12px 28px; margin-left:12px;">Back to Home</button>
-  </div>`;
-  
-  document.getElementById('main').innerHTML = html;
+  // 日期
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    
+    const hasRecord = AemonaDB.sessions.some(s => s.date === dateStr);
+    
+    calendarHTML += `
+      <td onclick="showDayDetail('${dateStr}')" 
+          style="padding:12px; cursor:pointer; border:1px solid #f0e6d9; border-radius:8px; 
+                 ${hasRecord ? 'background:#fef3c7; font-weight:bold;' : 'background:#fff;'};">
+        ${day}
+      </td>`;
+
+    if ((firstDay + day) % 7 === 0) {
+      calendarHTML += `</tr><tr>`;
+    }
+  }
+
+  calendarHTML += `</tr></tbody></table>`;
+  container.innerHTML = calendarHTML;
+}
+
+// ==================== 点击日期显示详情 ====================
+function showDayDetail(dateStr) {
+  const detailContainer = document.getElementById('day-detail');
+  const daySessions = AemonaDB.sessions.filter(s => s.date === dateStr);
+
+  if (daySessions.length === 0) {
+    detailContainer.innerHTML = `
+      <p style="text-align:center; padding:40px; color:#888; background:#f9f5f0; border-radius:12px;">
+        No records on ${dateStr}
+      </p>`;
+    return;
+  }
+
+  let html = `<h3 style="margin-bottom:15px;">${dateStr} Records</h3>`;
+
+  daySessions.forEach((session, index) => {
+    html += `
+      <div style="background:#f9f5f0; padding:18px; border-radius:12px; margin-bottom:15px; border-left:6px solid #8a6f5e;">
+        <strong style="color:#8a6f5e;">Session ${index+1} • ${session.time}</strong><br><br>
+        <p style="line-height:1.5;">${session.story}</p>
+        ${session.emotionPairs && session.emotionPairs.length > 0 ? 
+          `<p style="margin-top:12px; color:#8a6f5e; font-weight:bold;">
+            ${session.emotionPairs[0].primary} + ${session.emotionPairs[0].secondary}
+          </p>` : ''}
+      </div>`;
+  });
+
+  detailContainer.innerHTML = html;
 }
 
 function goBack() {
