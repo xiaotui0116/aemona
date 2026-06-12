@@ -16,18 +16,28 @@ Phone and Apple login are not currently supported as stable login methods.
 
 ## Run locally
 
-1. Install dependencies:
+Requirements: Node.js 18 or newer.
+
+1. Clone the repository and enter the v3 application:
 
    ```bash
-   npm install
+   git clone https://github.com/xiaotui0116/aemona.git
+   cd aemona/v3
+   npm ci
    ```
 
-2. Create `.env` from `.env.example` and fill in the required values.
+2. Create `.env` from `.env.example`:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   On Windows PowerShell, use `Copy-Item .env.example .env`.
 
 3. Start the server:
 
    ```bash
-   npm run dev
+   npm start
    ```
 
 4. Open:
@@ -42,10 +52,13 @@ Firebase values are required for Email and Google login. Enable both providers i
 
 Set `BETA_ACCESS_CODE` in `.env` to enable the recommended beta-code testing flow.
 
+Never commit `.env`. It is intentionally ignored by Git.
+
 ## Validation
 
 ```bash
 npm test
 ```
 
-The v3 package excludes `.env`, `node_modules`, editor files, unused development dependencies, and removed tool files.
+The v3 package excludes `.env`, dependencies, editor files, unused development
+dependencies, and removed tool files.
