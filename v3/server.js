@@ -9,6 +9,8 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
 const betaAttempts = new Map();
 
 app.use(cors());
@@ -240,12 +242,12 @@ Records: ${JSON.stringify(safeRecords.slice(0, 12))}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 7000);
     try {
-      const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
+      const response = await fetch(DEEPSEEK_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         signal: controller.signal,
         body: JSON.stringify({
-          model: 'deepseek-v3-2-251201',
+          model: DEEPSEEK_MODEL,
           messages: [
             { role: 'system', content: 'You are Aemona pattern analysis. Return valid JSON only. Never diagnose.' },
             { role: 'user', content: prompt }
@@ -295,14 +297,14 @@ app.post('/api/ai', async (req, res) => {
   }
 
   try {
-    const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
+    const response = await fetch(DEEPSEEK_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'deepseek-v3-2-251201',     
+        model: DEEPSEEK_MODEL,
         messages: [
           {
             role: 'system',
@@ -342,5 +344,5 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`✦ Aemona running at http://localhost:${PORT}`);
-  console.log(`✦ AI backend: DeepSeek (model: deepseek-chat)`);
+  console.log(`✦ AI backend: DeepSeek (model: ${DEEPSEEK_MODEL})`);
 });
