@@ -39,9 +39,9 @@ body {
   justify-content: center;
   align-items: flex-start;
   height: 100vh;
-  height: 100dvh;
+  height: 100svh;
   min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 100svh;
   overflow: hidden;
 }
 
@@ -979,10 +979,10 @@ input.reg-input:focus { border-color: var(--purple); background: rgba(255,255,25
   background-position: top center;
   background-size: 430px 1340px;
   background-attachment: local;
-  height: 100vh;
+  height: 100svh;
   min-height: 0;
-  max-height: 100vh;
-  flex: 0 0 100vh;
+  max-height: 100svh;
+  flex: 0 0 100svh;
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;

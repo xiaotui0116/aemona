@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
   <title>Aemona</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#1a1624">
@@ -720,6 +720,18 @@
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
   }
+  // Prevent iOS keyboard from causing layout jump
+  (function() {
+    let scrollY = 0;
+    document.addEventListener('focusin', function(e) {
+      if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+        scrollY = window.scrollY;
+      }
+    }, true);
+    document.addEventListener('focusout', function() {
+      window.scrollTo(0, scrollY);
+    }, true);
+  })();
 </script>
 <script>
   // Burn the loop animation
