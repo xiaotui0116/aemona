@@ -457,20 +457,20 @@ function initToolbarFluid() {
 // ── GUIDE (pre-auth slides) ────────────────────────────────────
 function initGuide() {
   guideStep = 0;
-  updateGuideScale();
   renderGuideSlide();
 }
 
-function updateGuideScale() {
-  const guide = document.getElementById('guide');
-  if (!guide) return;
+function updateAppScale() {
+  const app = document.getElementById('app');
+  if (!app) return;
   const viewportHeight = window.visualViewport?.height || window.innerHeight;
   const scale = Math.min(window.innerWidth / 430, viewportHeight / 932, 1);
-  guide.style.setProperty('--guide-scale', String(scale));
+  app.style.setProperty('--app-scale', String(scale));
 }
 
-window.addEventListener('resize', updateGuideScale);
-window.visualViewport?.addEventListener('resize', updateGuideScale);
+updateAppScale();
+window.addEventListener('resize', updateAppScale);
+window.visualViewport?.addEventListener('resize', updateAppScale);
 
 function renderGuideSlide() {
   const slides = document.querySelectorAll('.guide-slide');

@@ -37,31 +37,40 @@ body {
   color: var(--text);
   display: flex;
   justify-content: center;
+  align-items: flex-start;
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
   min-height: 100dvh;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 #app {
-  width: 100%;
-  max-width: 430px;
-  min-height: 100vh;
-  min-height: 100dvh;
+  width: 430px;
+  min-width: 430px;
+  max-width: none;
+  height: 932px;
+  min-height: 932px;
+  flex: 0 0 430px;
   background: var(--surface);
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   background: transparent;
+  transform: scale(var(--app-scale, 1));
+  transform-origin: top center;
 }
 
 /* ── PAGE SYSTEM ─────────────────────────────────────────────── */
 .page {
   display: none;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
-  flex: 1;
+  width: 430px;
+  height: 932px;
+  min-height: 932px;
+  max-height: 932px;
+  flex: 0 0 932px;
   animation: pg-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   background: linear-gradient(rgba(255,255,255,0.90), rgba(255,255,255,0.90)), url('assets/WelcomeSectionBG/S0.svg');
   background-repeat: no-repeat;
@@ -69,6 +78,31 @@ body {
   background-position: center;
 }
 .page.show { display: flex; }
+
+.setup-body,
+.explore-scroll,
+.q-page-body,
+.result-body,
+.entries-cal-body,
+.patterns-body,
+.settings-scroll,
+.settings-detail,
+.settings-detail-body,
+.tools-categories,
+.native-tool-body,
+.tool-category-detail-grid,
+.discover-grid,
+.explore-detail-scroll,
+.emotion-wheel-wrap,
+.record-modal-body,
+#input-modal,
+#note-it,
+#pattern-detail {
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
 
 @keyframes pg-in {
   from { opacity: 0; transform: translateY(10px); }
@@ -221,15 +255,6 @@ label { font-size: 11px; color: var(--muted); letter-spacing: 0.07em; text-trans
 ══════════════════════════════════════════ */
 #guide {
   position: relative;
-  width: 430px;
-  min-width: 430px;
-  height: 932px;
-  min-height: 932px;
-  flex: 0 0 932px;
-  align-self: center;
-  transform: scale(var(--guide-scale, 1));
-  transform-origin: top center;
-  animation: none;
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
@@ -269,6 +294,24 @@ label { font-size: 11px; color: var(--muted); letter-spacing: 0.07em; text-trans
 #guide-btn {
   width: 376px;
   height: 60px;
+}
+
+.auth-view,
+#questions,
+#result,
+#explore-library,
+#note-it,
+#explore {
+  min-height: 932px !important;
+  height: 932px !important;
+  max-height: 932px;
+}
+
+#input-modal,
+#explore .explore-scroll {
+  height: 932px !important;
+  max-height: 932px;
+  flex-basis: 932px;
 }
 
 /* ══════════════════════════════════════════
