@@ -1371,6 +1371,10 @@ function renderExplore() {
       <div class="explore-subtitle serif">How are you feeling?</div>
       <button class="explore-hero-main" type="button" onclick="go('input-modal')" aria-label="Find my words"></button>
     </section>
+    <div class="recent-section">
+      <div class="section-label">Today's records</div>
+      <div id="explore-hist-list"></div>
+    </div>
     ${renderDiscoverSection('recommended')}
     ${renderDiscoverSection('emotions')}
     ${renderDiscoverSection('realizations')}
@@ -1379,6 +1383,7 @@ function renderExplore() {
     ${renderDiscoverSection('collections')}
     ${renderDiscoverSection('myths')}
     ${renderDiscoverSection('translations')}`;
+  renderExploreRecords();
   if (!scroll.dataset.promoScrollBound) {
     scroll.dataset.promoScrollBound = 'true';
     scroll.addEventListener('scroll', closeExplorePromo, { passive: true });
