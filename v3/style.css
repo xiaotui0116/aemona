@@ -7869,6 +7869,55 @@ input.reg-input:focus { border-color: var(--purple); background: rgba(255,255,25
   flex: 0 0 104px;
 }
 
+/* Mobile popup performance: avoid repainting the full app behind every overlay. */
+.setup-time-picker,
+.explore-promo,
+.record-modal,
+#record-modal,
+.entries-date-popover,
+.settings-detail {
+  contain: layout paint;
+}
+
+#record-modal .record-modal-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 540px;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .setup-time-picker,
+  .explore-promo-backdrop,
+  .record-modal,
+  #record-modal,
+  .entries-date-popover {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .setup-time-picker {
+    background: rgba(43, 32, 55, 0.28);
+  }
+
+  .explore-promo-backdrop {
+    background: rgba(43, 39, 45, 0.48);
+  }
+
+  .explore-promo-card {
+    filter: none;
+    transition-duration: 0.16s;
+  }
+
+  .record-modal-content,
+  #record-modal .record-modal-content {
+    animation: none;
+    box-shadow: 0 14px 36px rgba(63, 43, 74, 0.18);
+  }
+
+  .settings-detail {
+    transition-duration: 0.12s;
+  }
+}
+
 /* Tool category color map */
 .tool-library-breathing {
   --tool-card-bg: linear-gradient(145deg, #f6d77f, #f7eab8);
