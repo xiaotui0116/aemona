@@ -6208,14 +6208,23 @@ input.reg-input:focus { border-color: var(--purple); background: rgba(255,255,25
 }
 
 #note-it .note-it-footer {
-  position: sticky;
-  z-index: 12;
+  position: relative;
+  z-index: 4;
   left: auto;
   right: auto;
-  bottom: 0;
-  margin-top: 0;
-  padding: 14px 28px 34px;
-  background: linear-gradient(to top, #f9f7f3 68%, rgba(249,247,243,0));
+  bottom: auto;
+  width: 430px;
+  height: 140px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+#note-it .note-it-footer .unpack-submit {
+  display: block;
+  width: 430px;
+  height: 140px;
+  background-size: 430px 140px;
 }
 
 /* Settings detail pages */
