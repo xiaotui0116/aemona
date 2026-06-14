@@ -7918,6 +7918,51 @@ input.reg-input:focus { border-color: var(--purple); background: rgba(255,255,25
   }
 }
 
+/* Stable main navigation: one toolbar shell, one indicator, no full-page jumps. */
+.page,
+.page.show {
+  animation: none !important;
+}
+
+.bottom-nav,
+.bottom-nav.visible,
+.bottom-nav[data-active="explore"],
+.bottom-nav[data-active="tools"],
+.bottom-nav[data-active="entries"],
+.bottom-nav[data-active="patterns"] {
+  background-image: url("assets/Components/Toolbar-Default.svg") !important;
+  transition: none !important;
+  contain: layout paint;
+}
+
+.bottom-nav::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute;
+  z-index: 0;
+  top: 84px;
+  left: 34px;
+  width: 40px;
+  height: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: #9371b6;
+  box-shadow: 0 2px 7px rgba(108,76,143,0.16);
+  transform: translateX(0);
+  transition: none;
+  pointer-events: none;
+}
+
+.bottom-nav[data-active="explore"]::before { transform: translateX(0); }
+.bottom-nav[data-active="tools"]::before { transform: translateX(104px); }
+.bottom-nav[data-active="entries"]::before { transform: translateX(208px); }
+.bottom-nav[data-active="patterns"]::before { transform: translateX(312px); }
+
+.bottom-nav .nav-item {
+  position: relative;
+  z-index: 1;
+}
+
 /* Tool category color map */
 .tool-library-breathing {
   --tool-card-bg: linear-gradient(145deg, #f6d77f, #f7eab8);

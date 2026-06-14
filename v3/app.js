@@ -370,9 +370,12 @@ function go(id) {
     clearInterval(window.aemonaRegulationTimer);
     window.aemonaRegulationTimer = null;
   }
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
+  const stableMainPage = ['explore', 'tools-page', 'entries-page', 'patterns-page'].includes(id);
   const pg = document.getElementById(id);
-  if (pg) pg.classList.add('show');
+  if (!stableMainPage) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
+    if (pg) pg.classList.add('show');
+  }
   const hideNavChrome = ['input-modal', 'note-it', 'questions', 'ai-loading-page', 'result', 'explore-library', 'explore-detail', 'settings-page', 'pattern-detail', 'tool-category-page', 'tool-experience', 'flush-tool', 'native-tool', 'reg-breath'].includes(id);
   document.getElementById('bottom-nav')?.classList.toggle('hidden', hideNavChrome);
   document.getElementById('bottom-nav-scrim')?.classList.toggle('hidden', hideNavChrome);
@@ -391,6 +394,9 @@ function go(id) {
   if (id === 'reg-clear')      spawnClearBalls();
   if (id === 'input-modal' && !isRestoringSession && !switchingEntryMode) initInputModal();
   if (id === 'note-it') renderNoteIt();
+  if (pg && stableMainPage) {
+    document.querySelectorAll('.page').forEach(p => p.classList.toggle('show', p === pg));
+  }
   if (!isRestoringSession) saveSessionState(id);
 }
 
