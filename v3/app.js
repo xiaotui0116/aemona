@@ -86,6 +86,7 @@ let currentUser     = null;
 let currentStory    = '';
 let currentTags     = {};     // { about:[], duration:[], space:[], body:[] }
 let currentPlanet   = null;
+let _resultCommitted = false;
 let currentInputMode = 'type';
 let voiceRecorder    = null;
 let voiceRecognition = null;
@@ -2116,7 +2117,7 @@ function renderQuickTags() {
         tagAsset('Head', 'assets/ExploreSection/Unpack/HEADButton-DEFAULT.svg', 'assets/ExploreSection/Unpack/head-a.svg', 42, 0, 55),
         tagAsset('Chest', 'assets/ExploreSection/Unpack/CHEST-DEFAULT.svg', 'assets/ExploreSection/Unpack/chest-a.svg', 98, 0, 64),
         tagAsset('Throat', 'assets/ExploreSection/Unpack/throatButton-default.svg', 'assets/ExploreSection/Unpack/throat-a.svg', 164, 0, 66),
-        tagAsset('Stomach', 'assets/ExploreSection/Unpack/StomachButton-default.png', 'assets/ExploreSection/Unpack/Stomach-a.svg', 232, 0, 78),
+        tagAsset('Stomach', 'assets/ExploreSection/Unpack/stomachdefault.svg', 'assets/ExploreSection/Unpack/Stomach-a.svg', 232, 0, 78),
         tagAsset('Legs', 'assets/ExploreSection/Unpack/legsButton-default.svg', 'assets/ExploreSection/Unpack/legs-a.svg', 312, 0, 49)
       ]
     }
@@ -2434,6 +2435,7 @@ function setAIStatus(msg) {
 
 // ── AI FLOW: Generate Result ───────────────────────────────────
 async function generateResult() {
+  _resultCommitted = false;
   go('ai-loading-page');
   setAIStatus('Understanding your emotional landscape...');
 
@@ -2476,7 +2478,7 @@ Generate a warm emotion result. Return ONLY valid JSON, no markdown:
     "fear_anger": <0-100, where 0=pure fear, 100=pure anger>,
     "surprise_anticipation": <0-100, where 0=pure surprise, 100=pure anticipation>
   },
-  "tools": ["<tool id from: tap|draw|breath|badge|unsent|loop>", "<second tool id>"],
+  "tools": ["<tool id from: tap|draw|breath|badge|unsent|loop|pop|drift>", "<second tool id>"],
   "companion_note": "1-2 sentences from ${comp.name} specifically about what the user shared. Use the selected emotion definition as the note's emotional foundation, but do not quote it mechanically."
 }`;
 
@@ -2547,8 +2549,11 @@ function renderResult() {
   if (toolsWrap) {
     toolsWrap.innerHTML = (currentPlanet.tools || ['breath', 'unsent']).map(tid => {
       const t = TOOLS.find(x => x.id === tid) || TOOLS[0];
+      const action = t.interactive
+        ? `openInteractiveTool('${t.toolTitle}','${t.toolDesc}','${t.toolPath}')`
+        : `go('${t.page}')`;
       return `
-        <div class="tool-rec-card" onclick="go('${t.page}')">
+        <div class="tool-rec-card" onclick="${action}">
           <div class="tool-rec-info">
             <div class="tool-rec-name">${t.name}</div>
             <div class="tool-rec-desc">${t.desc}</div>
@@ -2569,12 +2574,11 @@ function renderResult() {
     `;
   }
 
-  const shareButton = document.querySelector('#result .result-footer .btn:not(.ghost)');
-  if (shareButton) shareButton.textContent = 'Share';
   const closeButton = document.querySelector('#result > .result-close');
   const moreButton = document.querySelector('#result > div:nth-child(2)');
   if (closeButton) closeButton.textContent = '×';
   if (moreButton) moreButton.textContent = '•••';
+  commitRecord();
   saveSessionState('result');
 }
 
@@ -2593,18 +2597,20 @@ function toolResultIcon(id) {
     loop: 'assets/tools/loop.png'
   };
   const src = iconMap[id];
-  return src ? `<img src="${src}" alt="">` : '';
+  if (src) return `<img src="${src}" alt="">`;
+  const t = TOOLS.find(x => x.id === id);
+  return t?.emoji ? `<span style="font-size:24px;line-height:1">${t.emoji}</span>` : '';
 }
 
-function saveResult() {
-  if (!currentPlanet) return;
+function commitRecord() {
+  if (!currentPlanet || !currentUser || _resultCommitted) return;
+  _resultCommitted = true;
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
-  const localDate = `${year}-${month}-${day}`;  // 格式 "YYYY-MM-DD"
+  const localDate = `${year}-${month}-${day}`;
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  
   const tagValues = Object.values(currentTags || {}).flat().filter(Boolean);
   const bodyLocations = currentTags?.body || [];
   const needValues = currentTags?.need || currentTags?.needs || currentTags?.space || [];
@@ -2642,6 +2648,10 @@ function saveResult() {
   d.cover = d.cover || {};
   d.cover[todayD] = currentPlanet;
   saveData(currentUser, d);
+}
+
+function saveResult() {
+  commitRecord();
   go('explore');
 }
 function lighten(hex) {

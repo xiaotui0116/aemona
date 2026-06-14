@@ -145,12 +145,16 @@ const EMOTION_DIMENSIONS = [
 
 // ── TOOLS GRID ────────────────────────────────────────────────
 const TOOLS = [
-  { id: "tap",     name: "Tap It Out",    desc: "Release the tension, one tap at a time.",      emoji: "👆", page: "reg-clear"  },
-  { id: "draw",    name: "Draw the Noise",desc: "Give it a shape, don't need the right words.", emoji: "🎨", page: "reg-drag"   },
-  { id: "breath",  name: "Soft Breath",   desc: "Slow your breath, soften your body.",          emoji: "🌬", page: "reg-breath" },
-  { id: "badge",   name: "Pocket Badge",  desc: "You did well. Don't forget that.",             emoji: "⭐", page: "reg-badge"  },
-  { id: "unsent",  name: "Unsent Note",   desc: "Say it anyway. You don't have to send it.",    emoji: "📝", page: "reg-unsent" },
-  { id: "loop",    name: "Burn the Loop", desc: "Let it go. It doesn't need to stay.",          emoji: "🔥", page: "reg-loop"   }
+  { id: "tap",    name: "Tap It Out",    desc: "Release the tension, one tap at a time.",      emoji: "👆", page: "reg-clear"  },
+  { id: "draw",   name: "Draw the Noise",desc: "Give it a shape, don't need the right words.", emoji: "🎨", page: "reg-drag"   },
+  { id: "breath", name: "Soft Breath",   desc: "Slow your breath, soften your body.",          emoji: "🌬", page: "reg-breath" },
+  { id: "badge",  name: "Pocket Badge",  desc: "You did well. Don't forget that.",             emoji: "⭐", page: "reg-badge"  },
+  { id: "unsent", name: "Unsent Note",   desc: "Say it anyway. You don't have to send it.",    emoji: "📝", page: "reg-unsent" },
+  { id: "loop",   name: "Burn the Loop", desc: "Let it go. It doesn't need to stay.",          emoji: "🔥", page: "reg-loop"   },
+  { id: "pop",    name: "Pop Away",      desc: "Let go one bubble at a time.",                 emoji: "🫧",
+    interactive: true, toolTitle: "Pop Away",   toolDesc: "Give pressure a shape, then release it gently.",    toolPath: "Pop away/index.html" },
+  { id: "drift",  name: "Drift",         desc: "Watch feelings shift and change.",              emoji: "🌊",
+    interactive: true, toolTitle: "Drift",      toolDesc: "Observe movement without asking it to settle.",     toolPath: "Drift/index.html" }
 ];
 
 // ── STORY PROMPTS shown greyed in textarea ────────────────────
