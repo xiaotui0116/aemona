@@ -1,0 +1,24 @@
+{
+  "name": "Aemona",
+  "short_name": "Aemona",
+  "description": "Emotional wellness — understand what you feel.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1a1624",
+  "background_color": "#f7f4f0",
+  "icons": [
+    {
+      "src": "assets/icon/appicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon/appicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
