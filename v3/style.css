@@ -221,7 +221,15 @@ label { font-size: 11px; color: var(--muted); letter-spacing: 0.07em; text-trans
 ══════════════════════════════════════════ */
 #guide {
   position: relative;
-  min-height: 100dvh;
+  width: 430px;
+  min-width: 430px;
+  height: 932px;
+  min-height: 932px;
+  flex: 0 0 932px;
+  align-self: center;
+  transform: scale(var(--guide-scale, 1));
+  transform-origin: top center;
+  animation: none;
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
@@ -254,14 +262,12 @@ label { font-size: 11px; color: var(--muted); letter-spacing: 0.07em; text-trans
 .guide-bottom {
   position: absolute;
   left: 27px;
-  right: 27px;
-  bottom: max(24px, env(safe-area-inset-bottom));
-  width: auto;
+  top: 820px;
+  width: 376px;
   height: 60px;
-  z-index: 2;
 }
 #guide-btn {
-  width: 100%;
+  width: 376px;
   height: 60px;
 }
 
