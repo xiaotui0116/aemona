@@ -26,12 +26,10 @@ function getNetworkUrls() {
 }
 
 app.use(cors());
-app.use(express.json({ limit: '100kb' }));
-
-const staticOptions = {
+app.use(express.json());
+app.use(express.static(path.join(__dirname), {
   etag: false,
   lastModified: false,
-  dotfiles: 'deny',
   setHeaders(res, filePath) {
     if (/\.(html|js|css)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -39,28 +37,7 @@ const staticOptions = {
       res.setHeader('Expires', '0');
     }
   }
-};
-
-app.use('/assets', express.static(path.join(__dirname, 'assets'), staticOptions));
-app.get(['/app.js', '/data.js', '/firebase-auth.js', '/style.css'], (req, res) => {
-  res.sendFile(path.join(__dirname, req.path), {
-    headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
-  });
-});
-
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-app.get('/mobile', async (req, res) => {
-  const mobileUrl = getNetworkUrls()[0] || `http://localhost:${PORT}`;
-  const qrDataUrl = await QRCode.toDataURL(mobileUrl, { width: 420, margin: 2 });
-  res.type('html').send(`<!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Aemona mobile access</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f2fa;color:#5d4772;font-family:Arial,sans-serif}.card{padding:32px;text-align:center;background:white;border-radius:24px;box-shadow:0 18px 60px #6c4f8826}.card img{width:min(70vw,360px)}p{margin:8px 0 20px;color:#81738d}a{color:#6c4f88;font-weight:700}</style>
-<main class="card"><h1>Open Aemona on your phone</h1><p>Connect your phone to the same Wi-Fi, then scan.</p><img src="${qrDataUrl}" alt="QR code for ${mobileUrl}"><p><a href="${mobileUrl}">${mobileUrl}</a></p></main></html>`);
-});
+}));
 
 app.get('/api/firebase-config', (req, res) => {
   res.json({
@@ -72,6 +49,16 @@ app.get('/api/firebase-config', (req, res) => {
     appId: process.env.FIREBASE_APP_ID || '',
     measurementId: process.env.FIREBASE_MEASUREMENT_ID || ''
   });
+});
+
+app.get('/mobile', async (req, res) => {
+  const mobileUrl = getNetworkUrls()[0] || `http://localhost:${PORT}`;
+  const qrDataUrl = await QRCode.toDataURL(mobileUrl, { width: 420, margin: 2 });
+  res.type('html').send(`<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aemona mobile access</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f2fa;color:#5d4772;font-family:Arial,sans-serif}.card{padding:32px;text-align:center;background:white;border-radius:24px;box-shadow:0 18px 60px #6c4f8826}.card img{width:min(70vw,360px)}p{margin:8px 0 20px;color:#81738d}a{color:#6c4f88;font-weight:700}</style>
+<main class="card"><h1>Open Aemona on your phone</h1><p>Connect your phone to the same Wi-Fi, then scan.</p><img src="${qrDataUrl}" alt="QR code for ${mobileUrl}"><p><a href="${mobileUrl}">${mobileUrl}</a></p></main></html>`);
 });
 
 app.post('/api/beta-access', (req, res) => {
