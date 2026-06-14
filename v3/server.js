@@ -6,12 +6,24 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const crypto = require('crypto');
+const os = require('os');
+const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
 const betaAttempts = new Map();
+
+function getNetworkUrls() {
+  return Object.entries(os.networkInterfaces())
+    .flatMap(([name, addresses]) => (addresses || []).map(address => ({ name, ...address })))
+    .filter(address => address.family === 'IPv4' && !address.internal)
+    .sort((a, b) => Number(/virtual|vethernet|wsl|docker/i.test(a.name)) - Number(/virtual|vethernet|wsl|docker/i.test(b.name)))
+    .map(address => `http://${address.address}:${PORT}`);
+}
 
 app.use(cors());
 app.use(express.json({ limit: '100kb' }));
@@ -38,6 +50,16 @@ app.get(['/app.js', '/data.js', '/firebase-auth.js', '/style.css'], (req, res) =
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+app.get('/mobile', async (req, res) => {
+  const mobileUrl = getNetworkUrls()[0] || `http://localhost:${PORT}`;
+  const qrDataUrl = await QRCode.toDataURL(mobileUrl, { width: 420, margin: 2 });
+  res.type('html').send(`<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aemona mobile access</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f2fa;color:#5d4772;font-family:Arial,sans-serif}.card{padding:32px;text-align:center;background:white;border-radius:24px;box-shadow:0 18px 60px #6c4f8826}.card img{width:min(70vw,360px)}p{margin:8px 0 20px;color:#81738d}a{color:#6c4f88;font-weight:700}</style>
+<main class="card"><h1>Open Aemona on your phone</h1><p>Connect your phone to the same Wi-Fi, then scan.</p><img src="${qrDataUrl}" alt="QR code for ${mobileUrl}"><p><a href="${mobileUrl}">${mobileUrl}</a></p></main></html>`);
 });
 
 app.get('/api/firebase-config', (req, res) => {
@@ -342,7 +364,15 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
+  const networkUrls = getNetworkUrls();
+
   console.log(`✦ Aemona running at http://localhost:${PORT}`);
+  console.log(`✦ Mobile QR page: http://localhost:${PORT}/mobile`);
   console.log(`✦ AI backend: DeepSeek (model: ${DEEPSEEK_MODEL})`);
+  networkUrls.forEach(url => console.log(`✦ Phone access: ${url}`));
+  if (networkUrls[0]) {
+    console.log('✦ Scan this QR code while your phone is on the same Wi-Fi:');
+    qrcode.generate(networkUrls[0], { small: true });
+  }
 });

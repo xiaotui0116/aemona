@@ -279,9 +279,7 @@ function restoreSessionState() {
 }
 
 function betaAccessEndpoint() {
-  return location.port === '3000'
-    ? '/api/beta-access'
-    : 'http://localhost:3000/api/beta-access';
+  return '/api/beta-access';
 }
 
 
