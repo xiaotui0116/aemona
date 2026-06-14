@@ -871,16 +871,7 @@ input.reg-input:focus { border-color: var(--purple); background: rgba(255,255,25
   box-shadow: none;
   filter: none;
   transform: none;
-}
-.setup-image-btn:not(:disabled):hover {
-  background-image: url("assets/Button/ContinueButton-activated.svg") !important;
-  filter: none;
-  transform: none;
-}
-.setup-image-btn:not(:disabled):active {
-  background-image: url("assets/Button/ContinueButton-activated.svg") !important;
-  filter: none;
-  transform: none;
+  transition: none;
 }
 .setup-image-btn:disabled {
   opacity: 1;

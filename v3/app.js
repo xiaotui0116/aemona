@@ -945,6 +945,7 @@ function selectSetupAnswer(question, option) {
 
 function previewSetupAnswer(button, question, option, hover) {
   if (button.classList.contains('active')) return;
+  if (hover && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
   const img = button.querySelector('img');
   if (img) img.src = setupOptionSrc(question, option, hover ? 'Hover' : 'default');
 }
