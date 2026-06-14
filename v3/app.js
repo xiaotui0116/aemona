@@ -464,8 +464,12 @@ function updateAppScale() {
   const app = document.getElementById('app');
   if (!app) return;
   const viewportHeight = window.visualViewport?.height || window.innerHeight;
-  const scale = Math.min(window.innerWidth / 430, viewportHeight / 932, 1);
+  const widthScale = Math.min(window.innerWidth / 430, 1);
+  const fitScale = Math.min(widthScale, viewportHeight / 932);
+  const useLargerDisplay = document.documentElement.classList.contains('large-text');
+  const scale = Math.min(widthScale, fitScale * (useLargerDisplay ? 1.12 : 1));
   app.style.setProperty('--app-scale', String(scale));
+  document.body.classList.toggle('larger-display-overflow', scale * 932 > viewportHeight + 1);
 }
 
 updateAppScale();
@@ -955,6 +959,7 @@ function updateSetupContinueState() {
   if (!nextBtn) return;
 
   const assetStep = setupStep <= 9;
+  const customActionStep = setupStep === 8 || setupStep === 9;
   const locked =
     (setupStep === 2 && !setupQ1) ||
     (setupStep === 3 && !setupQ2) ||
@@ -962,7 +967,7 @@ function updateSetupContinueState() {
     (setupStep === 6 && setupHelpful.length === 0);
   nextBtn.disabled = locked;
 
-  if (!assetStep) {
+  if (!assetStep || customActionStep) {
     nextBtn.style.backgroundImage = '';
     return;
   }
@@ -1367,6 +1372,10 @@ function renderExplore() {
     ${renderDiscoverSection('collections')}
     ${renderDiscoverSection('myths')}
     ${renderDiscoverSection('translations')}`;
+  if (!scroll.dataset.promoScrollBound) {
+    scroll.dataset.promoScrollBound = 'true';
+    scroll.addEventListener('scroll', closeExplorePromo, { passive: true });
+  }
   requestAnimationFrame(showExplorePromo);
 }
 
@@ -3442,6 +3451,7 @@ function renderSettings() {
   document.documentElement.classList.toggle('large-text', Boolean(data.settings?.largeText));
   document.documentElement.classList.toggle('disable-italics', Boolean(data.settings?.disableItalics));
   document.documentElement.classList.toggle('calm-tool-motion', Boolean(data.settings?.calmToolMotion));
+  updateAppScale();
   document.getElementById('settings-detail')?.classList.remove('show');
 }
 
@@ -3492,7 +3502,7 @@ function openSettingsDetail(section) {
         ${settingsToggle('calmToolMotion', 'Turn off tools animations', 'Keep regulation tools visually still.', Boolean(settings.calmToolMotion))}
         ${settingsToggle('disableItalics', 'Turn off italic text blocks', 'Use upright type for reflective copy.', Boolean(settings.disableItalics))}
         ${settingsToggle('highContrast', 'Stronger contrast', 'Deepen purple text and controls for readability.', Boolean(settings.highContrast))}
-        ${settingsToggle('largeText', 'Larger text', 'Give body copy a little more room.', Boolean(settings.largeText))}`
+        ${settingsToggle('largeText', 'Larger display', 'Scale up the whole app, including text and controls. Scroll vertically when needed.', Boolean(settings.largeText))}`
     },
     language: {
       title: 'Language',
@@ -3617,7 +3627,10 @@ function saveSetting(key, value) {
   saveData(currentUser, data);
   if (key === 'reduceMotion') document.documentElement.classList.toggle('reduce-motion', value);
   if (key === 'highContrast') document.documentElement.classList.toggle('high-contrast', value);
-  if (key === 'largeText') document.documentElement.classList.toggle('large-text', value);
+  if (key === 'largeText') {
+    document.documentElement.classList.toggle('large-text', value);
+    updateAppScale();
+  }
   if (key === 'disableItalics') document.documentElement.classList.toggle('disable-italics', value);
   if (key === 'calmToolMotion') document.documentElement.classList.toggle('calm-tool-motion', value);
 }

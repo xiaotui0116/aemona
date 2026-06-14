@@ -45,6 +45,12 @@ body {
   overflow: hidden;
 }
 
+body.larger-display-overflow {
+  height: auto;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
 #app {
   width: 430px;
   min-width: 430px;
@@ -6638,7 +6644,7 @@ input.reg-input:focus { border-color: var(--purple); background: rgba(255,255,25
 .explore-promo.show {
   visibility: visible;
   opacity: 1;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .explore-promo-backdrop {
@@ -6651,6 +6657,7 @@ input.reg-input:focus { border-color: var(--purple); background: rgba(255,255,25
   backdrop-filter: blur(1px);
   -webkit-backdrop-filter: blur(1px);
   cursor: pointer;
+  pointer-events: none;
 }
 
 .explore-promo-card {
@@ -6664,6 +6671,7 @@ input.reg-input:focus { border-color: var(--purple); background: rgba(255,255,25
   filter: drop-shadow(0 22px 38px rgba(69, 52, 80, 0.18));
   transform: translateY(12px) scale(0.985);
   transition: transform 0.32s cubic-bezier(.22,1,.36,1);
+  pointer-events: none;
 }
 
 .explore-promo.show .explore-promo-card {
@@ -6681,6 +6689,21 @@ input.reg-input:focus { border-color: var(--purple); background: rgba(255,255,25
   color: transparent;
   font-size: 0;
   cursor: pointer;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .setup-maybe-later:hover {
+    background-image: url("assets/SetupSectionAssets/MaybeLaterButton-default.svg");
+  }
+
+  .setup-turn-on:hover {
+    background-image: url("assets/SetupSectionAssets/TurnonMotivationButton-defalut.svg");
+  }
+
+  .setup-begin-exploring:hover {
+    background-image: url("assets/SetupSectionAssets/BeginExploringButton-default.svg");
+  }
 }
 
 .explore-promo-close {
