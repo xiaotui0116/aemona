@@ -7840,6 +7840,35 @@ input.reg-input:focus { border-color: var(--purple); background: rgba(255,255,25
   }
 }
 
+/* Keep every toolbar state on the same fixed app-canvas geometry. */
+.bottom-nav,
+.bottom-nav.visible {
+  position: absolute;
+  left: 7px;
+  right: auto;
+  bottom: 0;
+  width: 416px;
+  min-width: 416px;
+  max-width: 416px;
+  height: 140px;
+  min-height: 140px;
+  max-height: 140px;
+  padding: 0;
+  border: 0;
+  flex: 0 0 140px;
+  background-position: left top;
+  background-size: 416px 140px;
+  transform: none;
+}
+
+.bottom-nav .nav-item {
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
+  height: 140px;
+  flex: 0 0 104px;
+}
+
 /* Tool category color map */
 .tool-library-breathing {
   --tool-card-bg: linear-gradient(145deg, #f6d77f, #f7eab8);
