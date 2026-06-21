@@ -1,0 +1,33 @@
+**/node_modules/
+.git/
+.claude/
+.codex-tool-shots/
+.impeccable/
+FIREBASE_SETUP.md
+qr.html
+structure.html
+slides-assets/
+assets/EntriesSection/*.tsx
+assets/EntriesSection/*.ts
+assets/ToolsSection/aemona-tools/.git/
+assets/ToolsSection/aemona-tools/.vscode/
+assets/ToolsSection/aemona-tools/package-lock.json
+assets/ToolsSection/aemona-tools/index.html
+# Pull the Thread is now native JS - entire directory excluded
+assets/ToolsSection/aemona-tools/Pull the thread/
+assets/ToolsSection/aemona-tools/Inner hear/*.mp4
+assets/ToolsSection/aemona-tools/Pop away/src/
+scripts/
+
+# Original large PNGs - replaced by WebP counterparts
+assets/ExploreSection/Main/*.png
+assets/ExploreSection/DiscoverImages/*.png
+
+# Original SVGs that had embedded rasters - replaced by WebP
+assets/WelcomeSectionBG/S0.svg
+assets/WelcomeSectionBG/S1.svg
+assets/WelcomeSectionBG/S2.svg
+assets/WelcomeSectionBG/S3.svg
+assets/WelcomeSectionBG/S4.svg
+assets/WelcomeSectionBG/S5.svg
+assets/WelcomeSectionBG/S6.svg
