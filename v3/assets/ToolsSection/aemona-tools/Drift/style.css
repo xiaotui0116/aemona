@@ -57,7 +57,7 @@ body{
 
   font-family:'Ibarra Real Nova', serif;
 
-  font-size:68px;
+  font-size:38px;
   font-weight:500;
 
   color:var(--text-1);
@@ -73,7 +73,7 @@ body{
 
   font-family:'Plus Jakarta Sans', sans-serif;
 
-  font-size:17px;
+  font-size:12px;
   font-weight:300;
 
   line-height:1.7;
@@ -240,7 +240,7 @@ canvas{
 
 @media (max-height:780px){
   .hero{ margin-top:72px; padding-left:44px; }
-  .hero h1{ font-size:58px; }
+  .hero h1{ font-size:34px; }
   .subtitle{ margin-top:16px; }
   #canvas-wrapper{ height:310px; margin-top:22px; }
   .reflection{ bottom:18px; }

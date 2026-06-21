@@ -3,7 +3,7 @@ import {
   createUserWithEmailAndPassword,
   getAdditionalUserInfo,
   GoogleAuthProvider,
-  browserSessionPersistence,
+  browserLocalPersistence,
   browserPopupRedirectResolver,
   getRedirectResult,
   initializeAuth,
@@ -69,7 +69,7 @@ try {
   }
 
   auth = initializeAuth(initializeApp(config), {
-    persistence: browserSessionPersistence,
+    persistence: browserLocalPersistence,
     popupRedirectResolver: browserPopupRedirectResolver
   });
 

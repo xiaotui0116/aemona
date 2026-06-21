@@ -20,8 +20,6 @@ let switchingEntryMode = false;
 let noteFamilyScrollTimer = null;
 
 async function callAI(prompt) {
-  console.log('[AI] calling provider:', AI_PROVIDER);
-  console.log('[AI] prompt preview:', prompt.slice(0, 120));
   let res, data;
 
   if (AI_PROVIDER === 'local-server') {
@@ -92,6 +90,10 @@ let voiceRecorder    = null;
 let voiceRecognition = null;
 let voiceChunks      = [];
 let voiceBlob        = null;
+let voiceTranscriptBase = '';
+let voiceTranscriptFinal = '';
+let voiceTranscriptInterim = '';
+let voiceRecognitionActive = false;
 let showImageFile    = null;
 let showImageUrl     = '';
 let sliderAnswers   = [];     // array of 0-100 values
@@ -338,7 +340,10 @@ function showLoggedOutEntry() {
     }
   }
 
+  let initFinished = false;
   const finishInit = () => {
+    if (initFinished) return;
+    initFinished = true;
     const betaAccessId = localStorage.getItem(BETA_ACCESS_KEY);
     if (betaAccessId) {
       completeBetaAccess(betaAccessId);
@@ -361,6 +366,7 @@ function showLoggedOutEntry() {
     setTimeout(finishInit, 1800);
   } else {
     window.addEventListener('firebase-auth-ready', () => setTimeout(finishInit, 1800), { once: true });
+    setTimeout(finishInit, 3500);
   }
 })();
 
@@ -464,14 +470,44 @@ function initToolbarFluid() {
 // ── GUIDE (pre-auth slides) ────────────────────────────────────
 function initGuide() {
   guideStep = 0;
+  preloadGuideAssets();
   renderGuideSlide();
 }
+
+let _guideAssetsPreloaded = false;
+function preloadGuideAssets() {
+  if (_guideAssetsPreloaded) return;
+  _guideAssetsPreloaded = true;
+  [
+    ...GUIDE_SLIDES.map(slide => slide.background).filter(Boolean),
+    'assets/Button/ContinueButton-default.svg',
+    'assets/Button/ContinueButton-activated.svg',
+    'assets/Button/IacceptButton-default.svg',
+    'assets/Button/iacceptButton-activated.svg'
+  ].forEach(src => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = src;
+  });
+}
+
+let _kbOpen = false;
+document.addEventListener('focusin', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') _kbOpen = true;
+}, true);
+document.addEventListener('focusout', () => {
+  setTimeout(() => { _kbOpen = false; }, 400);
+}, true);
+
+// Store stable viewport dims so keyboard doesn't change scale
+let _stableW = window.innerWidth;
+let _stableH = window.innerHeight;
 
 function updateAppScale() {
   const app = document.getElementById('app');
   if (!app) return;
-  const viewportHeight = window.visualViewport?.height || window.innerHeight;
-  const widthScale = Math.min(window.innerWidth / 430, 1);
+  const viewportHeight = _stableH;
+  const widthScale = Math.min(_stableW / 430, 1);
   const fitScale = Math.min(widthScale, viewportHeight / 932);
   const useLargerDisplay = document.documentElement.classList.contains('large-text');
   const scale = Math.min(widthScale, fitScale * (useLargerDisplay ? 1.12 : 1));
@@ -480,8 +516,15 @@ function updateAppScale() {
 }
 
 updateAppScale();
-window.addEventListener('resize', updateAppScale);
-window.visualViewport?.addEventListener('resize', updateAppScale);
+window.addEventListener('resize', () => {
+  // Only update on real resize (orientation/window change), not keyboard
+  if (!_kbOpen) {
+    _stableW = window.innerWidth;
+    _stableH = window.innerHeight;
+    updateAppScale();
+  }
+});
+// Don't add visualViewport resize listener — it fires on keyboard open too
 
 function renderGuideSlide() {
   const slides = document.querySelectorAll('.guide-slide');
@@ -495,9 +538,13 @@ function renderGuideSlide() {
     if (i === guideStep)     s.classList.add('active');
     if (i < guideStep)       s.classList.add('prev');
   });
-  // button text
   const btn = document.getElementById('guide-btn');
-  if (btn) btn.textContent = guideStep === GUIDE_SLIDES.length - 1 ? 'I accept' : 'Continue';
+  if (btn) {
+    const isLast = guideStep === GUIDE_SLIDES.length - 1;
+    btn.classList.toggle('guide-accept-btn', isLast);
+    btn.classList.toggle('guide-continue-btn', !isLast);
+    btn.setAttribute('aria-label', isLast ? 'I accept' : 'Continue');
+  }
 }
 
 function guideNext() {
@@ -540,7 +587,7 @@ function firebaseErrorMessage(error) {
   }
   if (/popup-blocked/i.test(message)) return 'Please allow pop-ups and try again.';
   if (/popup-closed-by-user/i.test(message)) return 'Sign-in was cancelled.';
-  if (/unauthorized-domain/i.test(message)) return 'Open the app from http://localhost:3000 and try again.';
+  if (/unauthorized-domain/i.test(message)) return 'This domain is not authorized in Firebase. Add aemona-production.up.railway.app to Firebase authorized domains.';
   if (/network-request-failed/i.test(message)) return 'Unable to reach Firebase. Check your connection and try again.';
   if (/invalid-credential|invalid-login-credentials|wrong-password|user-not-found/i.test(message)) {
     return 'The email or password is incorrect.';
@@ -568,14 +615,25 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
 }
 
+function currentAuthView() {
+  const active = document.querySelector('#auth .auth-view.active');
+  const match = active?.id?.match(/^auth-(create|signin|login)-view$/);
+  return match ? match[1] : authSubViewReturn || 'login';
+}
+
+function redirectAuthToBeta(returnView = 'login') {
+  const safeReturnView = ['create', 'signin', 'login'].includes(returnView) ? returnView : 'login';
+  if (navigator.vibrate) navigator.vibrate(35);
+  openBetaAccess(safeReturnView);
+  showToast('We recommend using the beta access code for now.');
+}
+
 function showAppleUnsupported() {
-  if (navigator.vibrate) navigator.vibrate([45, 35, 45]);
-  showToast("Apple sign-in isn't supported yet.");
+  redirectAuthToBeta(currentAuthView());
 }
 
 function showPhoneUnsupported() {
-  if (navigator.vibrate) navigator.vibrate([45, 35, 45]);
-  showToast("Phone sign-in isn't supported yet.");
+  redirectAuthToBeta(currentAuthView());
 }
 
 function completeFirebaseLogin(result) {
@@ -598,6 +656,10 @@ function completeFirebaseLogin(result) {
 }
 
 async function socialLogin(provider) {
+  if (provider !== 'google') {
+    redirectAuthToBeta(currentAuthView());
+    return;
+  }
   try {
     const result = await getFirebaseAuth().signInProvider(provider);
     if (result) completeFirebaseLogin(result);
@@ -625,8 +687,7 @@ function openPhoneAuth(returnView = 'signin') {
 }
 
 function openEmailLogin(returnView = 'signin') {
-  authSubViewReturn = returnView;
-  switchAuthView('email-login');
+  redirectAuthToBeta(returnView);
 }
 
 function openBetaAccess(returnView = 'login') {
@@ -753,15 +814,7 @@ async function confirmPhoneCode() {
 }
 
 async function handleLogin() {
-  clearErr('login-err');
-  const email = document.getElementById('l-email').value.trim();
-  const p = document.getElementById('l-pass').value;
-  if (!email || !p) { showErr('login-err', 'Please fill in all fields.'); return; }
-  try {
-    completeFirebaseLogin(await getFirebaseAuth().signInEmail(email, p));
-  } catch (error) {
-    showErr('login-err', firebaseErrorMessage(error));
-  }
+  redirectAuthToBeta('login');
 }
 
 function togglePw(inputId, btn) {
@@ -772,32 +825,12 @@ function togglePw(inputId, btn) {
 }
 
 async function handleRegister() {
-  clearErr('reg-err');
-  const name  = document.getElementById('r-name').value.trim();
-  const email = document.getElementById('r-email').value.trim();
-  const p     = document.getElementById('r-pass').value;
-  const c     = document.getElementById('r-confirm').value;
-  if (!name)               { showErr('reg-err', 'Please enter your full name.'); return; }
-  if (!email || !p || !c)  { showErr('reg-err', 'Please fill in all fields.'); return; }
-  if (p.length < 8)        { showErr('reg-err', 'Password must be at least 8 characters.'); return; }
-  if (!/[A-Z]/.test(p))    { showErr('reg-err', 'Password needs at least 1 uppercase letter.'); return; }
-  if (!/[a-z]/.test(p))    { showErr('reg-err', 'Password needs at least 1 lowercase letter.'); return; }
-  if (p !== c)             { showErr('reg-err', 'Passwords do not match.'); return; }
-  try {
-    const result = await getFirebaseAuth().registerEmail(email, p);
-    const uid = 'firebase_' + result.uid;
-    const d = getData(uid);
-    d.profile = { ...(d.profile || {}), name };
-    saveData(uid, d);
-    completeFirebaseLogin(result);
-  } catch (error) {
-    showErr('reg-err', firebaseErrorMessage(error));
-  }
+  redirectAuthToBeta('create');
 }
 
 function goToSignIn() {
   go('auth');
-  switchAuthView('signin');
+  redirectAuthToBeta('login');
 }
 
 async function handleLogout() {
@@ -814,7 +847,7 @@ async function handleLogout() {
   const hasAcceptedWelcome =
     localStorage.getItem('ae_welcome_accepted') === WELCOME_ACCEPTANCE_VERSION;
   go(hasAcceptedWelcome ? 'auth' : 'guide');
-  if (hasAcceptedWelcome) switchAuthView('login');
+  if (hasAcceptedWelcome) redirectAuthToBeta('login');
 }
 
 
@@ -872,22 +905,22 @@ function setupOptionSrc(question, option, mode) {
 }
 
 function setupBackgroundImage() {
-  if (setupStep <= 3) return `assets/SetupSectionBG/S${setupStep - 1}.svg`;
+  if (setupStep <= 3) return `assets/SetupSectionBG/S${setupStep - 1}.webp`;
 
   const companionId = selectedCompanion?.id || 'milo';
   const fileByCompanion = {
-    avis: 'Avis.svg',
-    echo: 'Echo.svg',
-    milo: 'milo.svg',
-    sila: 'Sila.svg'
+    avis: 'Avis.webp',
+    echo: 'Echo.webp',
+    milo: 'milo.webp',
+    sila: 'Sila.webp'
   };
-  const fileName = fileByCompanion[companionId] || 'milo.svg';
+  const fileName = fileByCompanion[companionId] || 'milo.webp';
   if (setupStep === 4) return `assets/SetupSectionBG/S3/${fileName}`;
   if (setupStep === 5) return `assets/SetupSectionBG/S4/${fileName.replace('milo', 'Milo')}`;
   if (setupStep === 6) return `assets/SetupSectionBG/S5/${fileName.replace('milo', 'Milo')}`;
-  if (setupStep === 7) return 'assets/SetupSectionBG/S6.svg';
+  if (setupStep === 7) return 'assets/SetupSectionBG/S6.webp';
   if (setupStep === 8) return 'assets/SetupSectionBG/S7.svg';
-  if (setupStep === 9) return 'assets/SetupSectionBG/S8.svg';
+  if (setupStep === 9) return 'assets/SetupSectionBG/S8.webp';
   return `assets/SetupSectionBG/S3/${fileName}`;
 }
 
@@ -1372,10 +1405,6 @@ function renderExplore() {
       <div class="explore-subtitle serif">How are you feeling?</div>
       <button class="explore-hero-main" type="button" onclick="go('input-modal')" aria-label="Find my words"></button>
     </section>
-    <div class="recent-section">
-      <div class="section-label">Today's records</div>
-      <div id="explore-hist-list"></div>
-    </div>
     ${renderDiscoverSection('recommended')}
     ${renderDiscoverSection('emotions')}
     ${renderDiscoverSection('realizations')}
@@ -1384,7 +1413,6 @@ function renderExplore() {
     ${renderDiscoverSection('collections')}
     ${renderDiscoverSection('myths')}
     ${renderDiscoverSection('translations')}`;
-  renderExploreRecords();
   if (!scroll.dataset.promoScrollBound) {
     scroll.dataset.promoScrollBound = 'true';
     scroll.addEventListener('scroll', closeExplorePromo, { passive: true });
@@ -1392,11 +1420,14 @@ function renderExplore() {
   requestAnimationFrame(showExplorePromo);
 }
 
+let _explorePromoSeen = false;
+
 function showExplorePromo() {
-  if (window.aemonaExplorePromoShown) return;
+  if (_explorePromoSeen) return;
   const promo = document.getElementById('explore-promo');
   if (!promo) return;
-  window.aemonaExplorePromoShown = true;
+  _explorePromoSeen = true;
+
   promo.classList.add('show');
   promo.setAttribute('aria-hidden', 'false');
 }
@@ -1448,7 +1479,7 @@ function discoverItemsFor(key) {
 function renderDiscoverCard(key, item, index) {
   const image = key === 'emotions' ? '' : (item.image || discoverImageFor(key, index));
   const icon = image
-    ? `<img src="${image}" alt="${escapeAttr(item.title)}">`
+    ? `<img src="${image}" alt="${escapeAttr(item.title)}" loading="lazy" decoding="async">`
     : (item.id ? emotionSymbol(item.id) : '<span class="discover-image-placeholder"></span>');
   const title = item.short || shortDiscoverTitle(item.title);
   return `
@@ -1462,10 +1493,10 @@ function renderDiscoverCard(key, item, index) {
 
 function discoverImageFor(key, index) {
   if (key === 'emotions') return '';
-  const offsets = { recommended: 0, realizations: 4, needs: 10, questions: 18, collections: 24, myths: 32, translations: 36 };
-  const imageNumber = (offsets[key] ?? 0) + index + 1;
-  const reusableImageNumber = ((imageNumber - 1) % 17) + 1;
-  return `assets/ExploreSection/Main/${reusableImageNumber}.png`;
+  const SECTIONS = ['recommended', 'realizations', 'needs', 'questions', 'collections', 'myths', 'translations'];
+  const sectionOffset = SECTIONS.indexOf(key) * 2;
+  const n = ((sectionOffset + index) % 19) + 1;
+  return `assets/ExploreSection/Main/${n}.webp`;
 }
 
 function shortDiscoverTitle(title) {
@@ -1572,7 +1603,7 @@ function openExploreCollection(key) {
 function discoverGridImage(key, item, index) {
   const image = item.image || discoverImageFor(key, index);
   return image
-    ? `<img src="${image}" alt="${escapeAttr(item.title)}">`
+    ? `<img src="${image}" alt="${escapeAttr(item.title)}" loading="lazy" decoding="async">`
     : '<span class="discover-image-placeholder" aria-hidden="true"></span>';
 }
 
@@ -1586,7 +1617,7 @@ function showExploreCard(key, index) {
   if (visual) {
     visual.className = `explore-detail-visual explore-detail-visual-${key}`;
     visual.innerHTML = image
-      ? `<img src="${image}" alt="">`
+      ? `<img src="${image}" alt="" decoding="async">`
       : (item.id ? emotionSymbol(item.id) : '');
   }
   document.getElementById('explore-detail-kicker').textContent = collection?.title || 'Explore';
@@ -1911,6 +1942,10 @@ function initInputModal() {
   voiceRecognition = null;
   voiceChunks = [];
   voiceBlob = null;
+  voiceTranscriptBase = '';
+  voiceTranscriptFinal = '';
+  voiceTranscriptInterim = '';
+  voiceRecognitionActive = false;
   showImageFile = null;
   if (showImageUrl) URL.revokeObjectURL(showImageUrl);
   showImageUrl = '';
@@ -1969,6 +2004,7 @@ function setInputMode(mode) {
 
 async function toggleVoiceRecording() {
   if (voiceRecorder?.state === 'recording') {
+    voiceRecognitionActive = false;
     voiceRecorder.stop();
     voiceRecognition?.stop();
     return;
@@ -1978,9 +2014,19 @@ async function toggleVoiceRecording() {
     setInputMode('type');
     return;
   }
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    showToast('Live transcription is not supported in this browser. Try Chrome or use your keyboard dictation.');
+    setInputMode('type');
+    return;
+  }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     voiceChunks = [];
+    voiceTranscriptBase = document.getElementById('story-input')?.value.trim() || '';
+    voiceTranscriptFinal = '';
+    voiceTranscriptInterim = '';
+    voiceRecognitionActive = false;
     voiceRecorder = new MediaRecorder(stream);
     voiceRecorder.ondataavailable = event => {
       if (event.data.size) voiceChunks.push(event.data);
@@ -1988,26 +2034,49 @@ async function toggleVoiceRecording() {
     voiceRecorder.onstop = () => {
       voiceBlob = new Blob(voiceChunks, { type: voiceRecorder.mimeType || 'audio/webm' });
       stream.getTracks().forEach(track => track.stop());
-      addAttachmentToStory('[Voice note attached]');
+      voiceRecognitionActive = false;
+      if (voiceTranscriptInterim.trim()) {
+        voiceTranscriptFinal = `${voiceTranscriptFinal} ${voiceTranscriptInterim.trim()}`.trim();
+        voiceTranscriptInterim = '';
+        renderVoiceTranscript();
+      }
       renderInputAttachment();
     };
     voiceRecorder.start();
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      voiceRecognition = new SpeechRecognition();
-      voiceRecognition.continuous = true;
-      voiceRecognition.interimResults = false;
-      voiceRecognition.lang = navigator.language || 'en-US';
-      voiceRecognition.onresult = event => {
-        const transcript = Array.from(event.results)
-          .slice(event.resultIndex)
-          .map(result => result[0]?.transcript || '')
-          .join(' ')
-          .trim();
-        if (transcript) addAttachmentToStory(transcript);
-      };
-      voiceRecognition.onerror = error => console.warn('[Unpack] Speech recognition:', error.error);
+    voiceRecognition = new SpeechRecognition();
+    voiceRecognition.continuous = true;
+    voiceRecognition.interimResults = true;
+    voiceRecognition.lang = navigator.language || 'en-US';
+    voiceRecognition.onresult = event => {
+      let finalText = '';
+      let interimText = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const piece = event.results[i][0]?.transcript || '';
+        if (event.results[i].isFinal) finalText += piece;
+        else interimText += piece;
+      }
+      if (finalText.trim()) {
+        voiceTranscriptFinal = `${voiceTranscriptFinal} ${finalText.trim()}`.trim();
+      }
+      voiceTranscriptInterim = interimText.trim();
+      renderVoiceTranscript(voiceTranscriptInterim);
+    };
+    voiceRecognition.onerror = error => {
+      console.warn('[Unpack] Speech recognition:', error.error);
+      if (error.error === 'not-allowed' || error.error === 'service-not-allowed') {
+        showToast('Speech recognition permission is needed for live transcription.');
+      }
+    };
+    voiceRecognition.onend = () => {
+      if (voiceRecognitionActive && voiceRecorder?.state === 'recording') {
+        try { voiceRecognition.start(); } catch (_) {}
+      }
+    };
+    voiceRecognitionActive = true;
+    try {
       voiceRecognition.start();
+    } catch (error) {
+      console.warn('[Unpack] Speech recognition start failed:', error);
     }
     renderInputAttachment();
   } catch (error) {
@@ -2044,10 +2113,23 @@ function addAttachmentToStory(text) {
   updateCharCount();
 }
 
+function renderVoiceTranscript(interimText = '') {
+  const input = document.getElementById('story-input');
+  if (!input) return;
+  const parts = [voiceTranscriptBase, voiceTranscriptFinal, interimText]
+    .map(part => String(part || '').trim())
+    .filter(Boolean);
+  input.value = parts.join(parts.length > 1 ? '\n' : '');
+  updateCharCount();
+}
+
 function removeInputAttachment(kind) {
   const input = document.getElementById('story-input');
   if (kind === 'voice') {
     voiceBlob = null;
+    voiceTranscriptBase = document.getElementById('story-input')?.value.trim() || '';
+    voiceTranscriptFinal = '';
+    voiceTranscriptInterim = '';
     if (input) input.value = input.value.replace(/\n?\[Voice note attached\]/g, '');
   }
   if (kind === 'image') {
@@ -2067,9 +2149,9 @@ function renderInputAttachment() {
   if (!panel) return;
   const isRecording = voiceRecorder?.state === 'recording';
   panel.innerHTML = `
-    ${isRecording ? `<button class="attachment-chip recording" type="button" onclick="toggleVoiceRecording()">Recording... tap to stop</button>` : ''}
-    ${voiceBlob ? `<button class="attachment-chip" type="button" onclick="removeInputAttachment('voice')">Voice note attached ×</button>` : ''}
-    ${showImageUrl ? `<div class="attachment-image-wrap"><img src="${showImageUrl}" alt="Selected image"><button type="button" onclick="removeInputAttachment('image')" aria-label="Remove image">×</button></div>` : ''}
+    ${isRecording ? `<button class="attachment-chip recording" type="button" onclick="toggleVoiceRecording()">Transcribing... tap to stop</button>` : ''}
+    ${voiceBlob ? `<button class="attachment-chip" type="button" onclick="removeInputAttachment('voice')">Voice saved x</button>` : ''}
+    ${showImageUrl ? `<div class="attachment-image-wrap"><img src="${showImageUrl}" alt="Selected image"><button type="button" onclick="removeInputAttachment('image')" aria-label="Remove image">x</button></div>` : ''}
   `;
   panel.classList.toggle('show', Boolean(panel.innerHTML.trim()));
 }
@@ -2218,7 +2300,7 @@ function fillStoryPrompt(text) {
 async function submitStory() {
   currentStory = document.getElementById('story-input').value.trim();
   if (!currentStory && Object.keys(currentTags).length === 0) {
-    alert('Please write something or select some tags first.');
+    showToast('Please write something or select some tags first.');
     return;
   }
   // Build combined context from story + tags
@@ -2348,7 +2430,7 @@ function renderSliderQuestions() {
   const sliderFill = followupSliderFill(val);
   const progressPct = ((safeStep + 1) / 5) * 200;
 
-  body.innerHTML = `
+  const newHtml = `
     <div class="followup-screen">
       <button class="followup-back" type="button" onclick="previousSliderQuestion()" aria-label="Back"></button>
       <div class="followup-progress">
@@ -2382,6 +2464,9 @@ function renderSliderQuestions() {
 
       <button class="followup-next btn" type="button" onclick="nextSliderQuestion()">${safeStep === 4 ? 'See my result' : 'Continue'}</button>
     </div>`;
+
+  body.innerHTML = newHtml;
+  setFollowupSliderFill(val);
   saveSessionState('questions');
 }
 
@@ -2412,19 +2497,30 @@ function nextSliderQuestion() {
 function onSlider(i, val) {
   const level = parseInt(val);
   sliderAnswers[i] = Math.round(level / 6 * 100);
-  const slider = document.querySelector('.followup-slider');
-  if (slider) slider.style.cssText = followupSliderFill(level);
+  setFollowupSliderFill(level);
   document.querySelectorAll('.followup-level-bar').forEach((bar, index) => {
     bar.classList.toggle('active', index === level);
   });
   saveSessionState('questions');
 }
 
+function setFollowupSliderFill(level) {
+  const pct = level / 6 * 100;
+  const start = Math.min(50, pct);
+  const end = Math.max(50, pct);
+  const c1 = 'rgba(213,212,210,0.52)';
+  const c2 = '#9371b6';
+  const g = `linear-gradient(to right,${c1} 0%,${c1} ${start}%,${c2} ${start}%,${c2} ${end}%,${c1} ${end}%,${c1} 100%)`;
+  let tag = document.getElementById('_sf_style');
+  if (!tag) { tag = document.createElement('style'); tag.id = '_sf_style'; document.head.appendChild(tag); }
+  tag.textContent = `.followup-slider::-webkit-slider-runnable-track{background:${g}!important}.followup-slider::-moz-range-track{background:${g}!important}`;
+}
+
 function followupSliderFill(level) {
   const pct = level / 6 * 100;
   const start = Math.min(50, pct);
   const end = Math.max(50, pct);
-  return `--fill-start:${start}%;--fill-end:${end}%;`;
+  return `--fill-start:${start}%;--fill-end:${end}%`;
 }
 
 function setAIStatus(msg) {
@@ -2445,41 +2541,64 @@ async function generateResult() {
 
   const qAndA = aiSliderQs.map((q, i) => {
     const pct = sliderAnswers[i];
-    const lean = pct < 40 ? `leaning toward "${q.left}"` : pct > 60 ? `leaning toward "${q.right}"` : 'neutral';
-    return `"${q.q}" → ${lean} (${pct}/100)`;
-  }).join('\n');
+    let lean, intensity;
+    if (pct < 20)      { lean = `strongly toward "${q.left}"`;  intensity = 'strong signal'; }
+    else if (pct < 40) { lean = `leaning toward "${q.left}"`;   intensity = 'moderate signal'; }
+    else if (pct > 80) { lean = `strongly toward "${q.right}"`; intensity = 'strong signal'; }
+    else if (pct > 60) { lean = `leaning toward "${q.right}"`;  intensity = 'moderate signal'; }
+    else               { lean = 'neutral / center';             intensity = 'weak signal'; }
+    return `Q: "${q.q}"\n  Left: "${q.left}" | Right: "${q.right}"\n  Answer: ${lean} [${intensity}]`;
+  }).join('\n\n');
 
-  const prompt = `You are an emotion analysis system for Aemona. You speak as ${comp.name}, a gentle companion.
-User shared: "${currentStory}"
+  const helpfulPrefs = (d.helpful || []).map(id => {
+    const opt = (typeof HELPFUL_OPTIONS !== 'undefined' ? HELPFUL_OPTIONS : []).find(o => o.id === id);
+    return opt ? opt.label : null;
+  }).filter(Boolean);
 
-⚠️ IMPORTANT: You MUST respond in the SAME LANGUAGE as the user's story. If the user wrote in Chinese, respond in Chinese. If the user wrote in Korean, respond in Korean. Never use English when the user used another language.
+  const helpfulHint = helpfulPrefs.length
+    ? `\nUser's preferred coping approaches (chosen during setup): ${helpfulPrefs.join('; ')}\nBias your tool selection toward tools that match these preferences.`
+    : '';
 
-Slider responses (0=left pole, 100=right pole):
+  const companionVoice = `${comp.name} (${comp.emoji}) — "${comp.tagline}" — ${comp.desc}`;
+
+  const prompt = `You are Aemona's emotion analysis and companion engine. Aemona is an emotion wellness app where users unpack their feelings with a personal companion.
+
+COMPANION: ${companionVoice}
+Write companion_note entirely in ${comp.name}'s voice — NOT as a therapist or narrator.
+
+User's story: "${currentStory}"
+
+SLIDER CHECK-IN — HIGH PRIORITY signals that must meaningfully shift your emotion choice:
+- Strong signals (pct < 20 or > 80) → decisively steer toward the emotion matching that pole
+- Moderate signals (20–40 or 60–80) → noticeably nudge the emotion
+- Neutral (40–60) → weak signal, don't over-weight
+
 ${qAndA}
 
-User sensitivity: ${sp ? sp.label + ' (' + sp.score + '/5)' : 'Unknown'}
+Sensitivity profile: ${sp ? sp.label + ' (' + sp.score + '/5)' : 'Unknown'}
+(Higher score → prefer subtler, more nuanced emotions; lower score → more visceral, direct emotions)
+${helpfulHint}
 
-Allowed emotion names:
+Pick the MOST SPECIFIC emotion that fits both the story AND the slider signals together. Avoid overused defaults (Exhausted, Anxious, Stressed, Overwhelmed) unless the story and sliders genuinely call for it. Choose from this exact list:
 ${ALLOWED_EMOTIONS.join(', ')}
 
-Emotion definitions:
-${Object.entries(EMOTION_DEFINITIONS).map(([name, definition]) => `${name}: ${definition}`).join('\n')}
-
-Generate a warm emotion result. Return ONLY valid JSON, no markdown:
+Return ONLY valid JSON, no markdown:
 {
-  "emotion": "choose EXACTLY ONE value from the allowed emotion names list above",
-  "subtitle": "short warm sentence validating the feeling (max 10 words)",
-  "color1": "#hex primary",
-  "color2": "#hex secondary",
-  "gradient": "radial-gradient CSS string using color1/color2",
+  "emotion": "<one emotion from the list>",
+  "subtitle": "<short English sentence, max 10 words, validating the feeling>",
+  "color1": "<hex color matching the emotion's energy>",
+  "color2": "<hex secondary color>",
+  "gradient": "<radial-gradient CSS using color1 and color2>",
   "landscape": {
-    "joy_sadness": <0-100, where 0=pure joy, 100=pure sadness>,
-    "trust_disgust": <0-100, where 0=pure trust, 100=pure disgust>,
-    "fear_anger": <0-100, where 0=pure fear, 100=pure anger>,
-    "surprise_anticipation": <0-100, where 0=pure surprise, 100=pure anticipation>
+    "joy_sadness": <0-100, 0=deep sadness, 100=joy>,
+    "trust_disgust": <0-100, 0=aversion/disgust, 100=trust/warmth>,
+    "fear_anger": <0-100, 0=fear/anxiety, 100=anger/frustration>,
+    "surprise_anticipation": <0-100, 0=disorientation, 100=excited anticipation>
   },
-  "tools": ["<tool id from: tap|draw|breath|badge|unsent|loop|pop|drift>", "<second tool id>"],
-  "companion_note": "1-2 sentences from ${comp.name} specifically about what the user shared. Use the selected emotion definition as the note's emotional foundation, but do not quote it mechanically."
+  "tools": ["<tool from: sigh|box|relax|coherent|belly|canvas|letter|senses|orient|bilateral|release|minute|care|warmth|thread|pop|drift|hear>", "<second tool>"],
+  "story_title": "<A vivid, memorable chapter-title for this emotional event. Same language as the user's story. 8–16 characters if Chinese, 6–12 words if English. Make it feel like a headline that captures WHAT happened and the emotional charge — slightly dramatic, a little poetic, NOT clinical. Like a book chapter name the user would instantly recognize as theirs.>",
+  "companion_note": "<Write as ${comp.name} speaking directly to the user. In the SAME LANGUAGE as the user's story. 3–4 short sentences. Open by reflecting back the feeling with warmth — not a label, but a description of what it feels like right now. Then mirror what happened from the user's perspective with empathy. Offer one gentle insight about why this feeling makes sense. Close with quiet strength that fits ${comp.name}'s spirit: '${comp.tagline}'. No advice, no judgment, no verdict. Only presence and warmth.>",
+  "story_snippet": "<one complete warm sentence for the Entries preview. Max 10 English words or 18 Chinese characters. Same language as the story. No em dash. No second sentence.>"
 }`;
 
   try {
@@ -2494,8 +2613,10 @@ Generate a warm emotion result. Return ONLY valid JSON, no markdown:
       color:      pd.color1,
       gradient:   pd.gradient || `radial-gradient(circle at 35% 35%, ${lighten(pd.color1)}, ${pd.color1} 55%, ${darken(pd.color2)})`,
       landscape:  pd.landscape,
-      tools:      pd.tools || ['breath', 'unsent'],
-      companion_note: pd.companion_note
+      tools:      (Array.isArray(pd.tools) && pd.tools.length) ? pd.tools : ['sigh', 'letter'],
+      companion_note: pd.companion_note,
+      story_snippet: pd.story_snippet || '',
+      story_title: pd.story_title || ''
     };
   } catch (e) {
     console.error('Result generation failed:', e);
@@ -2547,20 +2668,27 @@ function renderResult() {
   // Recommended tools
   const toolsWrap = document.getElementById('result-tools');
   if (toolsWrap) {
-    toolsWrap.innerHTML = (currentPlanet.tools || ['breath', 'unsent']).map(tid => {
-      const t = TOOLS.find(x => x.id === tid) || TOOLS[0];
-      const action = t.interactive
-        ? `openInteractiveTool('${t.toolTitle}','${t.toolDesc}','${t.toolPath}')`
-        : `go('${t.page}')`;
-      return `
-        <div class="tool-rec-card" onclick="${action}">
-          <div class="tool-rec-info">
-            <div class="tool-rec-name">${t.name}</div>
-            <div class="tool-rec-desc">${t.desc}</div>
-          </div>
-          <div class="tool-rec-icon">${toolResultIcon(tid)}</div>
-        </div>`;
+    const rawTools = Array.isArray(currentPlanet.tools) && currentPlanet.tools.length
+      ? currentPlanet.tools
+      : ['sigh', 'letter'];
+    const toolCards = rawTools.map(tid => {
+      try {
+        const t = currentToolRecommendation(tid);
+        if (!t) return '';
+        return `
+          <div class="tool-rec-card" onclick="${t.action}">
+            <div class="tool-rec-info">
+              <div class="tool-rec-name">${t.name}</div>
+              <div class="tool-rec-desc">${t.desc}</div>
+            </div>
+            <div class="tool-rec-icon tool-practice-${t.tone}">${toolPracticeVisual(t.tone)}</div>
+          </div>`;
+      } catch { return ''; }
     }).join('');
+    toolsWrap.innerHTML = toolCards || (() => {
+      const t = currentToolRecommendation('sigh');
+      return t ? `<div class="tool-rec-card" onclick="${t.action}"><div class="tool-rec-info"><div class="tool-rec-name">${t.name}</div><div class="tool-rec-desc">${t.desc}</div></div></div>` : '';
+    })();
   }
 
   // Companion note
@@ -2585,21 +2713,6 @@ function renderResult() {
 function emotionSymbol(id) {
   const filename = id === 'surprise' ? 'suprise' : id;
   return `<img class="emotion-symbol" src="assets/Symbols/${filename}.svg" alt="${escapeAttr(id)}">`;
-}
-
-function toolResultIcon(id) {
-  const iconMap = {
-    tap: 'assets/tools/tap.png',
-    draw: 'assets/tools/draw.png',
-    breath: 'assets/tools/breath.png',
-    badge: 'assets/tools/badge.png',
-    unsent: 'assets/tools/unsent.png',
-    loop: 'assets/tools/loop.png'
-  };
-  const src = iconMap[id];
-  if (src) return `<img src="${src}" alt="">`;
-  const t = TOOLS.find(x => x.id === id);
-  return t?.emoji ? `<span style="font-size:24px;line-height:1">${t.emoji}</span>` : '';
 }
 
 function commitRecord() {
@@ -2731,12 +2844,20 @@ function renderEntries() {
       dayDiv.style.setProperty('--entry-color', rec.planet?.color || entryFamily.color);
       dayDiv.style.setProperty('--entry-soft', entryFamily.soft);
       dayDiv.querySelector('.entry-door-art').innerHTML = makeEntryDoorArt(rec, d);
-      dayDiv.addEventListener('click', () => toggleEntryDoor(dayDiv, rec, d));
-      dayDiv.addEventListener('dblclick', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        dayDiv.classList.add('open');
-        updateEntriesPreview(rec, d);
+      dayDiv.addEventListener('click', () => {
+        const wasOpen = dayDiv.classList.contains('open');
+        document.querySelectorAll('#e-cal-grid .e-cal-day.open').forEach(cell => {
+          cell.classList.remove('open');
+        });
+        if (wasOpen) {
+          resetEntriesPreview();
+        } else {
+          dayDiv.classList.add('open');
+          updateEntriesPreview(rec, d);
+        }
+      });
+      dayDiv.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
         showDayRecordsModal(dayRecords);
       });
     }
@@ -2766,8 +2887,7 @@ function renderEntries() {
     }).join('');
   }
 
-  const subtitle = document.querySelector('#entries-page .entries-subtitle');
-  if (subtitle) subtitle.textContent = 'All the emotions you felt';
+  renderMonthMoodPalette(filteredRecords);
   const preview = document.getElementById('entries-door-preview');
   if (preview) resetEntriesPreview();
   renderEntriesDatePicker();
@@ -2848,20 +2968,85 @@ function toggleEntryDoor(dayDiv, rec, day) {
 function resetEntriesPreview() {
   const preview = document.getElementById('entries-door-preview');
   if (!preview) return;
-  preview.innerHTML = '<div class="entries-preview-copy"><strong class="serif">A feeling lives behind each door.</strong><span>Tap a purple door to reveal it. Double-click to read the full entry.</span></div>';
+  preview.innerHTML = '<div class="entries-preview-copy"><strong class="serif">A feeling lives behind each door.</strong><span>Tap a colored door to reveal it.</span></div>';
+}
+
+function landscapeSummary(ls) {
+  if (!ls) return '';
+  const dims = [
+    { key: 'joy_sadness',          lo: 'heavy-hearted',   hi: 'uplifted',      mid: 'mixed' },
+    { key: 'trust_disgust',        lo: 'closed off',      hi: 'open & trusting', mid: 'uncertain' },
+    { key: 'fear_anger',           lo: 'fearful',         hi: 'frustrated',    mid: 'tense' },
+    { key: 'surprise_anticipation',lo: 'disoriented',     hi: 'anticipating',  mid: 'unsettled' }
+  ];
+  const peaks = dims
+    .map(d => ({ ...d, v: ls[d.key] ?? 50 }))
+    .filter(d => d.v <= 25 || d.v >= 75)
+    .sort((a, b) => Math.abs(b.v - 50) - Math.abs(a.v - 50))
+    .slice(0, 2);
+  if (!peaks.length) return '';
+  return peaks.map(d => d.v >= 75 ? d.hi : d.lo).join(' · ');
 }
 
 function updateEntriesPreview(rec, day) {
   const preview = document.getElementById('entries-door-preview');
   if (!preview || !rec) return;
   const planet = rec.planet || {};
+  const family = entryEmotionFamily(planet.emotion, planet.category);
+  const color = planet.color || family.color;
+  const snippet = conciseEntryPreviewText(planet.story_snippet || '');
+  const companionNote = planet.companion_note || '';
+  const subtitle = planet.subtitle || '';
+  const ls = landscapeSummary(planet.landscape);
+  const tools = (planet.tools || []).slice(0, 2).map(tid => {
+    try { return currentToolRecommendation(tid)?.name || tid; } catch { return tid; }
+  }).filter(Boolean);
+
+  const storyTitle = planet.story_title || '';
   preview.innerHTML = `
     <div class="entries-preview-art">${makeEntryDoorArt(rec, day)}</div>
     <div class="entries-preview-text">
-      <div class="entries-preview-kicker">${rec.date || ''} · ${rec.time || ''} · ${escapeHTML(planet.category || entryEmotionFamily(planet.emotion).label)}</div>
-      <div class="entries-preview-title serif">${escapeHTML(planet.emotion || 'A feeling')}</div>
-      <div class="entries-preview-story">${escapeHTML(rec.story || 'No note saved for this entry.')}</div>
+      <div class="entries-preview-kicker">${rec.date || ''} · ${rec.time || ''} · <span style="color:${color}">${escapeHTML(planet.emotion || '')}</span></div>
+      ${storyTitle
+        ? `<div class="entries-preview-title serif">${escapeHTML(storyTitle)}</div>`
+        : `<div class="entries-preview-title serif" style="color:${color}">${escapeHTML(planet.emotion || 'A feeling')}</div>`
+      }
+      ${subtitle && !storyTitle ? `<div class="entries-preview-sub">${escapeHTML(subtitle)}</div>` : ''}
+      ${snippet ? `<div class="entries-preview-snippet">${escapeHTML(snippet)}</div>` : ''}
+      ${ls ? `<div class="entries-preview-ls">${escapeHTML(ls)}</div>` : ''}
+      ${snippet
+        ? ''
+        : (companionNote
+          ? `<div class="entries-preview-companion">${escapeHTML(conciseEntryPreviewText(companionNote))}</div>`
+          : (rec.story ? `<div class="entries-preview-story">${escapeHTML(conciseEntryPreviewText(rec.story))}</div>` : ''))
+      }
+      ${tools.length ? `<div class="entries-preview-tools">${tools.map(n => `<span class="epv-tool">${escapeHTML(n)}</span>`).join('')}</div>` : ''}
     </div>`;
+}
+
+function conciseEntryPreviewText(text) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  const firstSentence = clean.split(/(?<=[.!?。！？])\s+/)[0] || clean;
+  if (/[\u3400-\u9fff]/.test(firstSentence)) {
+    return firstSentence.length > 22 ? `${firstSentence.slice(0, 21)}…` : firstSentence;
+  }
+  const words = firstSentence.split(/\s+/).filter(Boolean);
+  return words.length > 12 ? `${words.slice(0, 12).join(' ')}…` : firstSentence;
+}
+
+function renderMonthMoodPalette(records) {
+  const palette = document.getElementById('entries-mood-palette');
+  if (!palette) return;
+  if (!records || records.length === 0) { palette.innerHTML = ''; return; }
+  const sorted = [...records].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const dots = sorted.map(rec => {
+    const family = entryEmotionFamily(rec.planet?.emotion, rec.planet?.category);
+    const color = rec.planet?.color || family.color;
+    return `<span class="emp-dot" style="background:${color}" title="${escapeAttr(rec.planet?.emotion || '')}"></span>`;
+  }).join('');
+  const label = records.length === 1 ? '1 feeling this month' : `${records.length} feelings this month`;
+  palette.innerHTML = `<span class="emp-count">${label}</span><span class="emp-dots">${dots}</span>`;
 }
 
 function makeEntryDoorArt(rec, day) {
@@ -2877,19 +3062,41 @@ function makeEntryDoorArt(rec, day) {
       <span class="entry-art-glow"></span>
       <img class="entry-art-symbol" src="assets/Symbols/${family.symbol}.svg" alt="">
       <img class="entry-art-companion" src="${companionAsset}" alt="">
-      <img class="entry-emotion-scene" src="${entryImage.png}" alt="${escapeAttr(emotion)} with ${escapeAttr(companionId)}"
-        onerror="if(this.dataset.retry){this.style.display='none'}else{this.dataset.retry='1';this.src='${entryImage.jpg}'}">
+      <img class="entry-emotion-scene" src="${entryImage.primary}" alt="${escapeAttr(emotion)} with ${escapeAttr(companionId)}"
+        onerror="if(this.dataset.fallback){this.onerror=null;this.src='${entryImage.lastResort}'}else{this.dataset.fallback='1';this.src='${entryImage.fallback}'}">
       <span class="entry-art-emotion serif">${escapeHTML(emotion)}</span>
     </div>`;
 }
 
 function entryEmotionImagePath(emotion, companionId) {
-  const folder = ALLOWED_EMOTIONS.find(name => name.toLowerCase() === String(emotion || '').toLowerCase()) || 'Blank';
-  const companion = ['avis', 'echo', 'milo', 'sila'].includes(String(companionId || '').toLowerCase())
-    ? String(companionId).toLowerCase()
-    : 'milo';
-  const base = `assets/EntriesSection/pic/${encodeURIComponent(folder)}/${companion}`;
-  return { png: `${base}.png`, jpg: `${base}.jpg` };
+  // Averse folder is empty — fall back to nearest emotion
+  const EMPTY_FOLDERS = {
+    Anxious: 'Worried',
+    Averse: 'Disgusted',
+    Enthusiastic: 'Energized',
+    Hopeful: 'Wishful',
+    Offended: 'Wronged',
+    Proud: 'Valued',
+    Stressed: 'Overwhelmed',
+    Supported: 'Connected'
+  };
+  const UPPERCASE_PNG_FOLDERS = new Set([
+    'Annoyed', 'Contemptuous', 'Ecstatic', 'Elated', 'Envious',
+    'Frustrated', 'Jealous', 'Wronged'
+  ]);
+  const UPPERCASE_JPG_FOLDERS = new Set(['Enraged', 'Furious', 'Resentful']);
+  const raw = ALLOWED_EMOTIONS.find(name => name.toLowerCase() === String(emotion || '').toLowerCase()) || 'Blank';
+  const folder = EMPTY_FOLDERS[raw] || raw;
+  const id = String(companionId || '').toLowerCase();
+  const companion = ['avis', 'echo', 'milo', 'sila'].includes(id) ? id : 'milo';
+  const usesUppercaseName = UPPERCASE_PNG_FOLDERS.has(folder) || UPPERCASE_JPG_FOLDERS.has(folder);
+  const fileCompanion = usesUppercaseName ? companion[0].toUpperCase() + companion.slice(1) : companion;
+  const extension = UPPERCASE_JPG_FOLDERS.has(folder) ? 'jpg' : 'png';
+  return {
+    primary: `assets/EntriesSection/pic/${encodeURIComponent(folder)}/${fileCompanion}.${extension}`,
+    fallback: `assets/EntriesSection/pic/Blank/${companion}.png`,
+    lastResort: 'assets/EntriesSection/pic/Blank/milo.png'
+  };
 }
 
 function entryEmotionFamily(emotion, category) {
@@ -2969,8 +3176,13 @@ function ensureModal() {
   document.body.insertAdjacentHTML('beforeend', modalHTML);
   const modal = document.getElementById('record-modal');
   const closeBtn = modal.querySelector('.record-modal-close');
-  closeBtn.onclick = () => modal.style.display = 'none';
-  modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+  const closeDoor = () => {
+    modal.style.display = 'none';
+    document.querySelectorAll('#e-cal-grid .e-cal-day.open').forEach(c => c.classList.remove('open'));
+    resetEntriesPreview();
+  };
+  closeBtn.onclick = closeDoor;
+  modal.onclick = (e) => { if (e.target === modal) closeDoor(); };
 }
 
 function showDayRecordsModal(records) {
@@ -2984,37 +3196,44 @@ function showDayRecordsModal(records) {
   bodyDiv.innerHTML = records.map((rec, idx) => {
     const planet = rec.planet || {};
     const emotion = planet.emotion || 'A feeling';
+    const color = planet.color || '#9371b6';
     const isNoteOnly = rec.source === 'note-it' || planet.source === 'note-it';
-    const eventSummary = summarizeEntryEvent(rec.story);
+    const storyTitle = planet.story_title || '';
+    const snippet = planet.story_snippet || '';
+    const companionNote = planet.companion_note || '';
+    const tools = (planet.tools || []).slice(0, 2).map(tid => {
+      try { return currentToolRecommendation(tid)?.name || tid; } catch { return tid; }
+    }).filter(Boolean);
+    const ls = landscapeSummary(planet.landscape);
     const story = isNoteOnly
-      ? `On this day, you simply paused to record ${emotion}. No story was added, and that still counts.`
-      : (rec.story || 'A feeling was recorded without a written story.');
+      ? (rec.story || '')
+      : (rec.story || '');
     return `
       <article class="record-modal-item ${isNoteOnly ? 'note-only' : 'unpacked-entry'}">
         <div class="record-modal-art">${makeEntryDoorArt(rec, idx + 1)}</div>
         <div class="record-item-header">
           <span class="record-item-time">${rec.time || '--:--'}</span>
-          <span class="record-item-source">${isNoteOnly ? 'Note it' : 'Unpacked'}</span>
+          <span class="record-item-source" style="color:${color}">${escapeHTML(emotion)}</span>
         </div>
-        <h2 class="record-item-emotion serif">${escapeHTML(emotion)}</h2>
-        <section>
-          <h3>${isNoteOnly ? 'A quiet check-in' : 'What happened'}</h3>
-          <strong>${escapeHTML(eventSummary)}</strong>
-          <p class="record-item-story">${escapeHTML(story)}</p>
-        </section>
-        ${planet.definition ? `
-          <section class="record-item-definition">
-            <h3>What this feeling can mean</h3>
-            <p>${escapeHTML(planet.definition)}</p>
+        ${storyTitle ? `<h2 class="record-item-title serif">${escapeHTML(storyTitle)}</h2>` : `<h2 class="record-item-emotion serif">${escapeHTML(emotion)}</h2>`}
+        ${snippet ? `<p class="record-item-snippet">${escapeHTML(snippet)}</p>` : ''}
+        ${story ? `<p class="record-item-story">${escapeHTML(story)}</p>` : ''}
+        ${ls ? `<div class="record-item-ls">${escapeHTML(ls)}</div>` : ''}
+        ${companionNote ? `
+          <section class="record-item-companion">
+            <p>${escapeHTML(companionNote)}</p>
           </section>` : ''}
+        ${tools.length ? `<div class="record-item-tools">${tools.map(n => `<span class="epv-tool">${escapeHTML(n)}</span>`).join('')}</div>` : ''}
       </article>
     `;
   }).join('');
   modal.style.display = 'flex';
 }
 
-function summarizeEntryEvent(story) {
-  const clean = String(story || '').replace(/^Note it:\s*/i, '').trim();
+function summarizeEntryEvent(rec) {
+  if (rec?.planet?.story_title) return rec.planet.story_title;
+  if (rec?.planet?.story_snippet) return rec.planet.story_snippet;
+  const clean = String(rec?.story || rec || '').replace(/^Note it:\s*/i, '').trim();
   if (!clean) return 'A feeling was recorded';
   const firstSentence = clean.split(/[.!?]\s/)[0].trim();
   return firstSentence.length > 88
@@ -3732,24 +3951,28 @@ const TOOL_SECTIONS = [
   ]},
   { id: 'expression', icon: '🎨', title: 'Expression', subtitle: 'Give shape to what is hard to say.', items: [
     ['Echo Canvas', 'Turn voice and movement into art.', "openInteractiveTool('Echo Canvas','Turn voice and movement into a living abstract canvas.','Echo Canvas/index.html')", 'canvas'],
-    ['Unsent Letter', 'Say it without sending it.', "go('reg-unsent')", 'letter']
+    ['Unsent Letter', 'Say it without sending it.', "go('reg-unsent')", 'letter'],
+    ['Weight Drop', 'Write what feels heavy. Let it fall.', "openNativeTool('drop')", 'drop']
   ]},
   { id: 'grounding', icon: '◌', title: 'Grounding', subtitle: 'Return gently to your body and surroundings.', items: [
     ['Five Senses Reset', 'Come back through what is here.', "openRegulationTool('senses')", 'senses'],
     ['Orienting Light', 'Let your eyes follow a calm light.', "openRegulationTool('orient')", 'orient'],
     ['Bilateral Rhythm', 'Follow a steady left-right pulse.', "openRegulationTool('bilateral')", 'bilateral'],
     ['Muscle Release', 'Tense and soften one area at a time.', "openRegulationTool('release')", 'release'],
-    ['One Minute Reset', 'Stay with one gentle minute.', "openRegulationTool('minute')", 'minute']
+    ['One Minute Reset', 'Stay with one gentle minute.', "openRegulationTool('minute')", 'minute'],
+    ['Tension Scan', 'Find where it lives in your body.', "openNativeTool('tension')", 'tension']
   ]},
   { id: 'connection', icon: '☀️', title: 'Connection', subtitle: 'Practice care, warmth, and belonging.', items: [
-    ['Kind Voice', 'Hear one gentle reminder.', "openRegulationTool('kindvoice')", 'care'],
-    ['Warmth Hold', 'Rest with a steady warm glow.', "openRegulationTool('warmth')", 'warmth']
+    ['Gentle Echo', 'One phrase at a time. Let it land.', "openRegulationTool('kindvoice')", 'care'],
+    ['Anchor Point', 'Touch and hold. Stay as long as you need.', "openRegulationTool('warmth')", 'warmth'],
+    ['Need Translator', 'What is this feeling asking for?', "openNativeTool('needs')", 'needs'],
+    ['Boundary Builder', 'Find a sentence that is clear and kind.', "openNativeTool('boundary')", 'boundary']
   ]},
   { id: 'interactive', icon: '🫧', title: 'Interactive', subtitle: 'Let feelings move through play.', items: [
-    ['Pull the Thread', 'Bring visual chaos into order.', "openInteractiveTool('Pull the Thread','Slowly gather scattered motion into something you can hold.','Pull the thread/dist/index.html')", 'thread'],
+    ['Pull the Thread', 'Bring visual chaos into order.', "openRegulationTool('thread')", 'thread'],
     ['Pop Away', 'Let go one bubble at a time.', "openInteractiveTool('Pop Away','Give pressure a shape, then release it gently.','Pop away/index.html')", 'pop'],
     ['Drift', 'Watch feelings shift and change.', "openInteractiveTool('Drift','Observe movement without asking it to settle.','Drift/index.html')", 'drift'],
-    ['Inner Hear', 'Rest inside responsive sound.', "openInteractiveTool('Inner Hear','A quiet sound space that responds to your touch.','Inner hear/index.html')", 'hear']
+    ['Still Ripples', 'Touch to release. Watch each feeling spread.', "openInteractiveTool('Still Ripples','Touch the screen to create ripples. Let each one spread and fade.','Inner hear/index.html')", 'hear']
   ]}
 ];
 
@@ -3766,9 +3989,10 @@ const TOOL_CATEGORY_DETAILS = {
 function renderToolsPage() {
   const root = document.getElementById('tools-categories');
   if (!root) return;
-  root.innerHTML = TOOL_SECTIONS.map(section => `
+  const strip = renderEmotionToolStrip();
+  root.innerHTML = strip + TOOL_SECTIONS.map(section => `
     <button class="tool-library-card tool-library-${section.id}" type="button" data-tool-search="${escapeAttr([section.title, section.subtitle, ...section.items.flatMap(item => [item[0], item[1]])].join(' ').toLowerCase())}" onclick="openToolCategory('${section.id}')">
-      <span class="tool-library-pattern" aria-hidden="true"></span>
+      ${toolPracticeVisual(section.items[0][3])}
       <strong class="serif">${section.title}</strong>
       <small>${section.items.length} ${section.items.length === 1 ? 'practice' : 'practices'}</small>
     </button>`).join('');
@@ -3821,6 +4045,23 @@ function toolPracticeVisual(tone) {
   return `<span class="tool-practice-art tool-art-${tone}" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>`;
 }
 
+function currentToolRecommendation(id) {
+  const legacyMap = {
+    tap: 'pop',
+    draw: 'canvas',
+    breath: 'sigh',
+    badge: 'care',
+    unsent: 'letter',
+    loop: 'thread'
+  };
+  const tone = legacyMap[id] || id;
+  for (const section of TOOL_SECTIONS) {
+    const item = section.items.find(candidate => candidate[3] === tone);
+    if (item) return { name: item[0], desc: item[1], action: item[2], tone };
+  }
+  return currentToolRecommendation('sigh');
+}
+
 function openToolCategory(id) {
   const section = TOOL_SECTIONS.find(item => item.id === id);
   const grid = document.getElementById('tool-category-detail-grid');
@@ -3841,33 +4082,39 @@ function openToolCategory(id) {
 
 function returnToToolCategory() {
   clearInterval(window.aemonaRegulationTimer);
+  clearInterval(window.aemonaGentleTimer);
+  if (window._anchorCleanup) { window._anchorCleanup(); window._anchorCleanup = null; }
   if (activeToolCategory) openToolCategory(activeToolCategory);
   else go('tools-page');
 }
+
+let _activeToolPath = null;
 
 function openInteractiveTool(title, description, path) {
   const frame = document.getElementById('tool-experience-frame');
   if (!frame) return;
   frame.title = title;
-  frame.src = `assets/ToolsSection/aemona-tools/${path}?v=20260612-1`;
-  frame.onload = () => {
-    try {
-      const doc = frame.contentDocument;
-      doc.querySelectorAll('.back-home').forEach(node => node.remove());
-    } catch (_) {}
-  };
+  frame.allow = 'microphone; camera; autoplay';
+  const fullPath = `assets/ToolsSection/aemona-tools/${path}?v=20260619-05`;
+  if (_activeToolPath !== fullPath) {
+    _activeToolPath = fullPath;
+    frame.src = fullPath;
+    frame.onload = () => {
+      try {
+        frame.contentDocument?.querySelectorAll('.back-home').forEach(node => node.remove());
+      } catch (_) {}
+    };
+  }
   go('tool-experience');
 }
 
 function openStandaloneTool(path) {
-  const url = new URL(`assets/ToolsSection/aemona-tools/${path}?v=20260612-1`, window.location.href);
+  const url = new URL(`assets/ToolsSection/aemona-tools/${path}?v=20260619-05`, window.location.href);
   const opened = window.open(url.href, '_blank', 'noopener,noreferrer');
   if (!opened) window.location.href = url.href;
 }
 
 function closeToolExperience() {
-  const frame = document.getElementById('tool-experience-frame');
-  if (frame) frame.src = 'about:blank';
   returnToToolCategory();
 }
 
@@ -3886,6 +4133,7 @@ const NATIVE_TOOLS = {
   ,tension: { kind: 'tension', title: 'Tension Scan', intro: 'Choose where tension is showing up, then notice its intensity without trying to fix it.' }
   ,needs: { kind: 'needs', title: 'Need Translator', intro: 'A reaction can be a signal. Explore what it may be asking for.' }
   ,boundary: { kind: 'boundary', title: 'Boundary Builder', intro: 'Build a sentence that is clear, kind, and usable.' }
+  ,drop: { kind: 'drop', title: 'Weight Drop', intro: 'Write what feels heavy. You don’t have to keep it.' }
 };
 
 const REGULATION_TOOLS = {
@@ -3894,8 +4142,9 @@ const REGULATION_TOOLS = {
   bilateral: { title: 'Bilateral Rhythm', intro: 'Follow the alternating pulse. Tap along if it feels comfortable.', kind: 'bilateral' },
   release: { title: 'Muscle Release', intro: 'Gently tense, then soften. Never push into pain.', kind: 'release' },
   minute: { title: 'One Minute Reset', intro: 'Nothing to solve for one minute. Just stay here.', kind: 'minute' },
-  kindvoice: { title: 'Kind Voice', intro: 'Choose one gentle phrase and let it repeat slowly.', kind: 'kindvoice' },
-  warmth: { title: 'Warmth Hold', intro: 'Press and hold the glow. Let it become a steady point of warmth.', kind: 'warmth' }
+  thread: { title: 'Pull the Thread', intro: 'Move slowly from tangled toward clear. Let it take as long as it needs.', kind: 'thread' },
+  kindvoice: { title: 'Gentle Echo', intro: 'One phrase at a time. Let it land before the next one arrives.', kind: 'kindvoice' },
+  warmth: { title: 'Anchor Point', intro: 'Touch and hold anywhere. Stay as long as you need.', kind: 'warmth' }
 };
 
 function openRegulationTool(id) {
@@ -3914,12 +4163,15 @@ function renderRegulationTool(id, tool) {
   if (id === 'bilateral') return `${head}<div class="reg-bilateral"><button type="button" aria-label="Left pulse"></button><button type="button" aria-label="Right pulse"></button></div><button class="reg-speed" type="button" onclick="cycleRegulationSpeed(this)">Slow rhythm</button>`;
   if (id === 'release') return `${head}<div class="reg-release"><div class="reg-release-orb"></div><strong id="release-label">Gently tense your shoulders</strong><span id="release-count">4</span></div>`;
   if (id === 'minute') return `${head}<div class="reg-minute"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52"></circle><circle class="reg-minute-progress" cx="60" cy="60" r="52"></circle></svg><strong id="minute-count">60</strong><span>seconds</span></div>`;
-  if (id === 'kindvoice') return `${head}<div class="kind-voice-phrases">${['I can take this one moment at a time.', 'I do not need to solve everything now.', 'My feelings can move without rushing.'].map(text => `<button type="button" onclick="selectKindPhrase(this)">${text}</button>`).join('')}</div><div class="kind-voice-output serif" id="kind-voice-output">Choose a phrase to hold.</div>`;
-  return `${head}<button class="warmth-hold" type="button"><span>Press and hold</span></button>`;
+  if (id === 'thread') return `${head}<div class="thread-tool"><svg id="thread-svg" viewBox="-8 18 376 169" class="thread-svg" aria-hidden="true"><path id="thread-path-ghost" fill="none" stroke="rgba(147,113,182,.13)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path id="thread-path-visible" fill="none" stroke="#9371b6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="thread-labels"><span>Tangled</span><span>Clear</span></div><input type="range" min="0" max="100" value="0" class="thread-slider" id="thread-slider" oninput="updateThreadPath(+this.value)" aria-label="Pull the thread"></div>`;
+  if (id === 'kindvoice') return `${head}<div class="gentle-echo"><div class="gentle-echo-phrase serif" id="gentle-echo-phrase"></div><div class="gentle-echo-dots" id="gentle-echo-dots"></div><div class="gentle-echo-nav"><button type="button" class="gentle-nav-btn" onclick="prevGentlePhrase()" aria-label="Previous">←</button><button type="button" class="gentle-nav-btn" id="gentle-pause-btn" onclick="toggleGentlePause()">Pause</button><button type="button" class="gentle-nav-btn" onclick="nextGentlePhrase()" aria-label="Next">→</button></div></div>`;
+  return `${head}<div class="anchor-point" id="anchor-point"><div class="anchor-rings" id="anchor-rings"></div><div class="anchor-center"></div><div class="anchor-label" id="anchor-label">Touch and hold anywhere</div><div class="anchor-timer" id="anchor-timer"></div></div>`;
 }
 
 function startRegulationTool(id) {
   clearInterval(window.aemonaRegulationTimer);
+  clearInterval(window.aemonaGentleTimer);
+  if (window._anchorCleanup) { window._anchorCleanup(); window._anchorCleanup = null; }
   if (id === 'release') {
     let tense = true, count = 4;
     window.aemonaRegulationTimer = setInterval(() => {
@@ -3932,6 +4184,9 @@ function startRegulationTool(id) {
     let count = 60;
     window.aemonaRegulationTimer = setInterval(() => { count -= 1; const el = document.getElementById('minute-count'); if (el) el.textContent = Math.max(count, 0); if (count <= 0) clearInterval(window.aemonaRegulationTimer); }, 1000);
   }
+  if (id === 'thread') updateThreadPath(0);
+  if (id === 'kindvoice') startGentleEcho();
+  if (id === 'warmth') startAnchorPoint();
 }
 
 function cycleRegulationSpeed(button) {
@@ -3939,12 +4194,6 @@ function cycleRegulationSpeed(button) {
   const fast = area?.classList.toggle('faster');
   button.textContent = fast ? 'Steady rhythm' : 'Slow rhythm';
 }
-function selectKindPhrase(button) {
-  button.parentElement.querySelectorAll('button').forEach(item => item.classList.remove('selected'));
-  button.classList.add('selected');
-  document.getElementById('kind-voice-output').textContent = button.textContent;
-}
-
 function openNativeTool(id) {
   const tool = NATIVE_TOOLS[id];
   const root = document.getElementById('native-tool-body');
@@ -3977,12 +4226,15 @@ function renderSpecialNativeTool(id, tool) {
   }
   if (tool.kind === 'tension') {
     const areas = ['Jaw', 'Shoulders', 'Chest', 'Stomach', 'Hands', 'Back', 'Legs', 'Somewhere else'];
-    return `${head}<div class="body-area-grid">${areas.map(area => `<button type="button" onclick="selectOneNativeChoice(this)">${area}</button>`).join('')}</div><div class="tension-meter"><label>How strong does it feel?<strong id="tension-value">5</strong></label><input type="range" min="1" max="10" value="5" oninput="document.getElementById('tension-value').textContent=this.value"><div><span>Soft</span><span>Strong</span></div></div><button class="native-tool-finish" type="button" onclick="finishSpecialTool('${id}')">Keep this observation</button>`;
+    return `${head}<div class="body-area-grid">${areas.map(area => `<button type="button" onclick="selectOneNativeChoice(this)">${area}</button>`).join('')}</div><div class="tension-meter"><label>How strong does it feel?<strong id="tension-value">5</strong></label><input type="range" min="1" max="10" value="5" oninput="document.getElementById('tension-value').textContent=this.value;this.style.setProperty('--pct',(this.value-1)/9*100+'%')"><div><span>Soft</span><span>Strong</span></div></div><button class="native-tool-finish" type="button" onclick="finishSpecialTool('${id}')">Keep this observation</button>`;
   }
   if (tool.kind === 'needs') {
     const reactions = ['I want to withdraw', 'I feel irritated', 'I cannot stop thinking', 'I feel numb', 'I want reassurance', 'Everything feels too much'];
     const needs = ['Rest', 'Safety', 'Space', 'Clarity', 'Connection', 'Choice', 'Recognition', 'Support'];
     return `${head}<div class="native-special-label">What feels closest?</div><div class="native-chip-grid">${reactions.map(item => `<button type="button" onclick="selectOneNativeChoice(this);updateNeedTranslation()">${item}</button>`).join('')}</div><div class="native-special-label">A possible need underneath</div><div class="native-chip-grid native-needs-grid">${needs.map(item => `<button type="button" onclick="toggleNativeChoice(this);updateNeedTranslation()">${item}</button>`).join('')}</div><div class="need-translation serif" id="need-translation">Your reaction may be asking for something important.</div><button class="native-tool-finish" type="button" onclick="finishSpecialTool('${id}')">Keep this translation</button>`;
+  }
+  if (tool.kind === 'drop') {
+    return `${head}<div class="weight-drop"><textarea class="weight-drop-text" id="weight-drop-text" placeholder="What feels heavy right now?" rows="5"></textarea><button class="weight-drop-release" type="button" onclick="dropWeight()">Let it go ↓</button><div class="weight-drop-stage" id="weight-drop-stage" aria-hidden="true"></div></div><button class="native-tool-finish" type="button" onclick="returnToToolCategory()">Done</button>`;
   }
   const openings = ['I need', 'I am not able to', 'I would feel better if'];
   const actions = ['more time before answering', 'some space right now', 'to finish this conversation later', 'clearer communication', 'support without advice'];
@@ -4030,6 +4282,295 @@ let activeBreathMethod = 'box';
 let breathPhaseIndex = 0;
 let breathSecondsLeft = 4;
 let breathPaused = false;
+
+
+// ── PULL THE THREAD ───────────────────────────────────────────
+const _THREAD_WPT = [
+  {x:0,  y:100},{x:28, y:46 },{x:52, y:154},{x:78, y:26 },{x:108,y:128},
+  {x:136,y:60 },{x:162,y:160},{x:190,y:36 },{x:218,y:136},{x:246,y:68 },
+  {x:272,y:158},{x:300,y:40 },{x:328,y:122},{x:360,y:100}
+];
+
+function _threadToPath(pts) {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const cp1x = p1.x + (p2.x - p0.x) / 6, cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6, cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)} ${cp2x.toFixed(1)} ${cp2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
+function updateThreadPath(pct) {
+  const t = pct / 100;
+  const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+  const cY = 100;
+  const pts = _THREAD_WPT.map(p => ({ x: p.x, y: p.y + (cY - p.y) * ease }));
+  const visible = document.getElementById('thread-path-visible');
+  const ghost = document.getElementById('thread-path-ghost');
+  if (visible) visible.setAttribute('d', _threadToPath(pts));
+  if (ghost && pct === 0) ghost.setAttribute('d', _threadToPath(_THREAD_WPT));
+}
+
+
+// ── GENTLE ECHO ───────────────────────────────────────────────
+const GENTLE_PHRASES = [
+  { text: "What you're feeling makes sense.", tag: 'any' },
+  { text: "You showed up. That already counts.", tag: 'any' },
+  { text: "You're allowed to not be certain right now.", tag: 'any' },
+  { text: "One small thing at a time.", tag: 'any' },
+  { text: "You don't have to carry this perfectly.", tag: 'any' },
+  { text: "Being gentle with yourself is not the same as giving up.", tag: 'any' },
+  { text: "You don't need to solve this right now.", tag: 'overwhelmed' },
+  { text: "This moment is allowed to just be.", tag: 'overwhelmed' },
+  { text: "You're allowed to rest before you have the answer.", tag: 'overwhelmed' },
+  { text: "Your nervous system is trying to protect you.", tag: 'anxious' },
+  { text: "You are safe in this moment.", tag: 'anxious' },
+  { text: "Take one breath. Then one more.", tag: 'anxious' },
+  { text: "You've felt this before and found your way.", tag: 'anxious' },
+  { text: "Feelings don't need to be fixed to be valid.", tag: 'sad' },
+  { text: "Something tender happened. That's allowed to matter.", tag: 'sad' },
+  { text: "Sadness is often how we know what we love.", tag: 'sad' },
+  { text: "You're allowed to need people.", tag: 'lonely' },
+  { text: "Anger is information, not instruction.", tag: 'angry' },
+  { text: "The feeling is real. The reaction can still be chosen.", tag: 'angry' },
+  { text: "You don't have to act while this is loud.", tag: 'angry' },
+  { text: "Rest is not the same as giving up.", tag: 'tired' },
+  { text: "You're allowed to be running low.", tag: 'tired' },
+  { text: "Slow is still forward.", tag: 'tired' },
+];
+
+let _gentlePhraseIndex = 0;
+let _gentlePaused = false;
+let _gentlePhrasesActive = GENTLE_PHRASES;
+
+function _emotionToGentleTag(emotion) {
+  if (!emotion) return 'any';
+  const e = emotion.toLowerCase();
+  if (/anxi|nerv|scar|appre|worry|worri|panic/.test(e)) return 'anxious';
+  if (/sad|grief|griev|sorr|depress|miser|hopeless/.test(e)) return 'sad';
+  if (/lonel|isol|abandon/.test(e)) return 'lonely';
+  if (/anger|angry|frust|irrit|annoy|rage|resent/.test(e)) return 'angry';
+  if (/tired|exhaust|burn|drained|overw/.test(e)) return 'tired';
+  if (/overwhelm|stress/.test(e)) return 'overwhelmed';
+  return 'any';
+}
+
+function startGentleEcho() {
+  const tag = _emotionToGentleTag(getLatestEmotion());
+  _gentlePhrasesActive = [
+    ...GENTLE_PHRASES.filter(p => p.tag === tag),
+    ...GENTLE_PHRASES.filter(p => p.tag === 'any'),
+    ...GENTLE_PHRASES.filter(p => p.tag !== tag && p.tag !== 'any'),
+  ];
+  _gentlePhraseIndex = 0;
+  _gentlePaused = false;
+  _updateGentleDisplay();
+  window.aemonaGentleTimer = setInterval(() => {
+    if (!_gentlePaused) { _gentlePhraseIndex++; _updateGentleDisplay(); }
+  }, 7000);
+}
+
+function _updateGentleDisplay() {
+  const phrase = _gentlePhrasesActive[_gentlePhraseIndex % _gentlePhrasesActive.length];
+  const el = document.getElementById('gentle-echo-phrase');
+  const dots = document.getElementById('gentle-echo-dots');
+  if (!el) return;
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(10px)';
+  setTimeout(() => {
+    el.textContent = phrase.text;
+    el.style.transition = 'opacity 0.55s ease, transform 0.55s ease';
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  }, 280);
+  if (dots) {
+    const total = Math.min(_gentlePhrasesActive.length, 7);
+    dots.innerHTML = Array.from({ length: total }, (_, i) =>
+      `<i${i === (_gentlePhraseIndex % total) ? ' class="active"' : ''}></i>`
+    ).join('');
+  }
+}
+
+function nextGentlePhrase() { _gentlePhraseIndex++; _updateGentleDisplay(); }
+function prevGentlePhrase() { if (_gentlePhraseIndex > 0) _gentlePhraseIndex--; _updateGentleDisplay(); }
+function toggleGentlePause() {
+  _gentlePaused = !_gentlePaused;
+  const btn = document.getElementById('gentle-pause-btn');
+  if (btn) btn.textContent = _gentlePaused ? 'Continue' : 'Pause';
+}
+
+
+// ── ANCHOR POINT ──────────────────────────────────────────────
+function startAnchorPoint() {
+  const area = document.getElementById('anchor-point');
+  if (!area) return;
+  let holdInterval = null;
+  let secondsHeld = 0;
+
+  const endHold = () => {
+    clearInterval(holdInterval); holdInterval = null;
+    area.classList.remove('holding');
+    if (secondsHeld === 0) return;
+    const msg = secondsHeld >= 10 ? 'That was steady.' : secondsHeld >= 5 ? 'Well held.' : 'You stayed.';
+    const label = document.getElementById('anchor-label');
+    if (label) label.textContent = msg;
+    if (navigator.vibrate) navigator.vibrate([8, 60, 8]);
+    setTimeout(() => {
+      const l = document.getElementById('anchor-label');
+      const t = document.getElementById('anchor-timer');
+      if (l) l.textContent = 'Touch and hold anywhere';
+      if (t) t.textContent = '';
+    }, 3200);
+  };
+
+  const startHold = (x, y) => {
+    secondsHeld = 0;
+    _createAnchorRing(area, x, y);
+    if (navigator.vibrate) navigator.vibrate(12);
+    const label = document.getElementById('anchor-label');
+    if (label) label.textContent = 'Stay here…';
+    holdInterval = setInterval(() => {
+      secondsHeld++;
+      _createAnchorRing(area, x, y);
+      const t = document.getElementById('anchor-timer');
+      if (t) t.textContent = `${secondsHeld}s`;
+    }, 1000);
+    area.classList.add('holding');
+  };
+
+  const onDown = e => {
+    if (holdInterval) return;
+    const r = area.getBoundingClientRect();
+    const pt = e.touches ? e.touches[0] : e;
+    startHold(pt.clientX - r.left, pt.clientY - r.top);
+    e.preventDefault();
+  };
+
+  area.addEventListener('mousedown', onDown);
+  area.addEventListener('touchstart', onDown, { passive: false });
+  document.addEventListener('mouseup', endHold);
+  document.addEventListener('touchend', endHold);
+
+  window._anchorCleanup = () => {
+    clearInterval(holdInterval);
+    area.removeEventListener('mousedown', onDown);
+    area.removeEventListener('touchstart', onDown);
+    document.removeEventListener('mouseup', endHold);
+    document.removeEventListener('touchend', endHold);
+  };
+}
+
+function _createAnchorRing(area, x, y) {
+  const container = area.querySelector('#anchor-rings');
+  if (!container) return;
+  const ring = document.createElement('div');
+  ring.className = 'anchor-ring';
+  ring.style.cssText = `left:${x}px;top:${y}px`;
+  container.appendChild(ring);
+  setTimeout(() => ring.remove(), 2200);
+}
+
+
+// ── WEIGHT DROP ───────────────────────────────────────────────
+function dropWeight() {
+  const textarea = document.getElementById('weight-drop-text');
+  const stage = document.getElementById('weight-drop-stage');
+  if (!textarea || !stage) return;
+  const text = textarea.value.trim();
+  if (!text) { textarea.focus(); return; }
+  const falling = document.createElement('div');
+  falling.className = 'weight-falling serif';
+  falling.textContent = text;
+  stage.innerHTML = '';
+  stage.appendChild(falling);
+  textarea.value = '';
+  textarea.placeholder = 'Something else, if it’s there…';
+  if (navigator.vibrate) navigator.vibrate([6, 80, 6]);
+}
+
+
+// ── EMOTION-TARGETED TOOL STRIP ───────────────────────────────
+function getLatestEmotion() {
+  const d = getData(currentUser);
+  if (!d?.records?.length) return null;
+  const sorted = [...d.records].sort((a, b) =>
+    ((b.date || '') + (b.time || '')).localeCompare((a.date || '') + (a.time || ''))
+  );
+  const r = sorted[0];
+  return r?.planet?.emotion || r?.primary_emotion || r?.emotion || null;
+}
+
+const TOOL_REC_MAP = {
+  sigh:      { name: 'Physiological Sigh', action: "openBreathingTool('sigh')" },
+  box:       { name: 'Box Breathing',       action: "openBreathingTool('box')" },
+  coherent:  { name: 'Coherent Breathing',  action: "openBreathingTool('coherent')" },
+  belly:     { name: 'Belly Breathing',     action: "openBreathingTool('belly')" },
+  senses:    { name: 'Five Senses Reset',   action: "openRegulationTool('senses')" },
+  orient:    { name: 'Orienting Light',     action: "openRegulationTool('orient')" },
+  bilateral: { name: 'Bilateral Rhythm',    action: "openRegulationTool('bilateral')" },
+  release:   { name: 'Muscle Release',      action: "openRegulationTool('release')" },
+  minute:    { name: 'One Minute Reset',    action: "openRegulationTool('minute')" },
+  kindvoice: { name: 'Gentle Echo',         action: "openRegulationTool('kindvoice')" },
+  warmth:    { name: 'Anchor Point',        action: "openRegulationTool('warmth')" },
+  letter:    { name: 'Unsent Letter',       action: "go('reg-unsent')" },
+  drop:      { name: 'Weight Drop',         action: "openNativeTool('drop')" },
+  tension:   { name: 'Tension Scan',        action: "openNativeTool('tension')" },
+  needs:     { name: 'Need Translator',     action: "openNativeTool('needs')" },
+  boundary:  { name: 'Boundary Builder',    action: "openNativeTool('boundary')" },
+  compassion:{ name: 'Self-Compassion',     action: "openNativeTool('compassion')" },
+  reach:     { name: 'Reach Out',           action: "openNativeTool('reach')" },
+  gratitude: { name: 'Gratitude Pause',     action: "openNativeTool('gratitude')" },
+};
+
+const EMOTION_TOOL_MAP = {
+  Anxious:      ['sigh', 'senses', 'bilateral'],
+  Nervous:      ['coherent', 'bilateral', 'orient'],
+  Scared:       ['sigh', 'senses', 'warmth'],
+  Apprehensive: ['coherent', 'orient', 'senses'],
+  Panicked:     ['sigh', 'bilateral', 'senses'],
+  Sad:          ['kindvoice', 'warmth', 'letter'],
+  Grief:        ['letter', 'kindvoice', 'warmth'],
+  Lonely:       ['warmth', 'kindvoice', 'reach'],
+  Hopeless:     ['kindvoice', 'senses', 'compassion'],
+  Melancholy:   ['kindvoice', 'warmth', 'belly'],
+  Angry:        ['sigh', 'drop', 'release'],
+  Frustrated:   ['sigh', 'release', 'needs'],
+  Irritated:    ['box', 'drop', 'sigh'],
+  Annoyed:      ['sigh', 'bilateral', 'needs'],
+  Resentful:    ['release', 'drop', 'boundary'],
+  Overwhelmed:  ['minute', 'senses', 'needs'],
+  Stressed:     ['box', 'tension', 'senses'],
+  Exhausted:    ['belly', 'minute', 'warmth'],
+  Numb:         ['bilateral', 'tension', 'senses'],
+  Disconnected: ['orient', 'bilateral', 'tension'],
+  Empty:        ['warmth', 'kindvoice', 'bilateral'],
+  Happy:        ['gratitude', 'kindvoice'],
+  Joyful:       ['gratitude', 'kindvoice'],
+};
+
+function _emotionToolRecs(emotion) {
+  if (!emotion) return null;
+  if (EMOTION_TOOL_MAP[emotion]) return EMOTION_TOOL_MAP[emotion];
+  const e = emotion.toLowerCase();
+  for (const [key, tools] of Object.entries(EMOTION_TOOL_MAP)) {
+    if (e.includes(key.toLowerCase()) || key.toLowerCase().includes(e)) return tools;
+  }
+  return null;
+}
+
+function renderEmotionToolStrip() {
+  const emotion = getLatestEmotion();
+  if (!emotion) return '';
+  const recs = _emotionToolRecs(emotion);
+  if (!recs?.length) return '';
+  const tools = recs.slice(0, 3).map(id => TOOL_REC_MAP[id]).filter(Boolean);
+  if (!tools.length) return '';
+  return `<div class="tools-emotion-strip"><div class="tools-emotion-label">For <em>${escapeHTML(emotion)}</em> right now</div><div class="tools-emotion-pills">${tools.map(t => `<button type="button" class="tools-emotion-pill" onclick="${t.action}">${escapeHTML(t.name)}</button>`).join('')}</div></div>`;
+}
+
 
 function openBreathingTool(method) {
   activeBreathMethod = BREATHING_METHODS[method] ? method : 'box';

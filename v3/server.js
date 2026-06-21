@@ -15,6 +15,7 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+const PUBLIC_APP_URL = (process.env.PUBLIC_APP_URL || 'https://aemona-production.up.railway.app').replace(/\/$/, '');
 const betaAttempts = new Map();
 
 function getNetworkUrls() {
@@ -35,6 +36,8 @@ app.use(express.static(path.join(__dirname), {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
+    } else if (/\.(png|jpg|jpeg|gif|webp|avif|svg|ico|woff2?|ttf|otf|mp3|wav)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     }
   }
 }));
@@ -52,13 +55,17 @@ app.get('/api/firebase-config', (req, res) => {
 });
 
 app.get('/mobile', async (req, res) => {
-  const mobileUrl = getNetworkUrls()[0] || `http://localhost:${PORT}`;
-  const qrDataUrl = await QRCode.toDataURL(mobileUrl, { width: 420, margin: 2 });
+  const localUrl = getNetworkUrls()[0] || `http://localhost:${PORT}`;
+  const publicUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : PUBLIC_APP_URL;
+  const targetUrl = req.query.local === '1' ? localUrl : publicUrl;
+  const qrDataUrl = await QRCode.toDataURL(targetUrl, { width: 420, margin: 2 });
   res.type('html').send(`<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Aemona mobile access</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f2fa;color:#5d4772;font-family:Arial,sans-serif}.card{padding:32px;text-align:center;background:white;border-radius:24px;box-shadow:0 18px 60px #6c4f8826}.card img{width:min(70vw,360px)}p{margin:8px 0 20px;color:#81738d}a{color:#6c4f88;font-weight:700}</style>
-<main class="card"><h1>Open Aemona on your phone</h1><p>Connect your phone to the same Wi-Fi, then scan.</p><img src="${qrDataUrl}" alt="QR code for ${mobileUrl}"><p><a href="${mobileUrl}">${mobileUrl}</a></p></main></html>`);
+<title>Aemona - Open on phone</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f2fa;color:#5d4772;font-family:Arial,sans-serif}.card{padding:32px 28px;text-align:center;background:white;border-radius:24px;box-shadow:0 18px 60px #6c4f8826;max-width:440px;width:90vw}.card img{width:min(68vw,320px)}h1{margin:0 0 6px;font-size:22px}p{margin:8px 0 20px;color:#81738d;font-size:14px}a{color:#6c4f88;font-weight:700;word-break:break-all}</style>
+<main class="card"><h1>Open Aemona on your phone</h1><p>Scan this QR code. It uses the public Railway app, so your phone does not need to stay on the same Wi-Fi as this computer.</p><img src="${qrDataUrl}" alt="QR code"><p><a href="${targetUrl}">${targetUrl}</a></p></main></html>`);
 });
 
 app.post('/api/beta-access', (req, res) => {
@@ -236,7 +243,7 @@ app.post('/api/patterns', async (req, res) => {
   let recentEvidence = localInsights.recurringTopics.map(item => item.evidence).filter(Boolean).slice(0, 2).join(' ').slice(0, 500);
   let source = 'local-fallback';
   const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (apiKey && safeRecords.length >= 5 && req.body?.useAI !== false) {
+  if (apiKey && safeRecords.length >= 2 && req.body?.useAI !== false) {
     const prompt = `Classify these emotional wellness records for Aemona. Return ONLY valid JSON.
 Do not write insight pages, advice, actions, reflections, diagnoses, or personality reports.
 Choose only from the allowed classification codes. Recent evidence must be 50-80 words maximum, gentle, non-diagnostic, and based only on the records.
@@ -261,7 +268,7 @@ Records: ${JSON.stringify(safeRecords.slice(0, 12))}`;
             { role: 'system', content: 'You are Aemona pattern analysis. Return valid JSON only. Never diagnose.' },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.15,
+          temperature: 0.45,
           max_tokens: 900
         })
       });
@@ -354,12 +361,11 @@ app.get('*', (req, res) => {
 app.listen(PORT, HOST, () => {
   const networkUrls = getNetworkUrls();
 
-  console.log(`✦ Aemona running at http://localhost:${PORT}`);
-  console.log(`✦ Mobile QR page: http://localhost:${PORT}/mobile`);
-  console.log(`✦ AI backend: DeepSeek (model: ${DEEPSEEK_MODEL})`);
-  networkUrls.forEach(url => console.log(`✦ Phone access: ${url}`));
-  if (networkUrls[0]) {
-    console.log('✦ Scan this QR code while your phone is on the same Wi-Fi:');
-    qrcode.generate(networkUrls[0], { small: true });
-  }
+  console.log(`Aemona running at http://localhost:${PORT}`);
+  console.log(`Mobile QR page: http://localhost:${PORT}/mobile`);
+  console.log(`Public phone access: ${PUBLIC_APP_URL}`);
+  console.log(`AI backend: DeepSeek (model: ${DEEPSEEK_MODEL})`);
+  networkUrls.forEach(url => console.log(`Local Wi-Fi testing: ${url}`));
+  console.log('Scan this QR code for public phone access:');
+  qrcode.generate(PUBLIC_APP_URL, { small: true });
 });

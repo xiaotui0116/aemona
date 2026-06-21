@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aemona — App Structure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Ibarra+Real+Nova:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Plus Jakarta Sans',sans-serif;
+  background:#F7F4F0;
+  color:#1A1624;
+  min-height:100vh;
+  padding:48px 24px 64px;
+}
+.page-title{
+  font-family:'Ibarra Real Nova',serif;
+  font-size:2rem;
+  font-weight:600;
+  color:#1A1624;
+  text-align:center;
+  margin-bottom:6px;
+}
+.page-sub{
+  font-size:.8rem;
+  color:#6E617E;
+  text-align:center;
+  letter-spacing:.04em;
+  margin-bottom:48px;
+}
+.chart{
+  max-width:900px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+
+/* ── root node ── */
+.root{
+  display:flex;
+  justify-content:center;
+  margin-bottom:0;
+}
+.root-node{
+  background:#6B4FA0;
+  color:#fff;
+  border-radius:14px;
+  padding:14px 32px;
+  font-family:'Ibarra Real Nova',serif;
+  font-size:1.25rem;
+  font-weight:600;
+  letter-spacing:.01em;
+  position:relative;
+}
+.root-node::after{
+  content:'';
+  position:absolute;
+  bottom:-24px;left:50%;
+  transform:translateX(-50%);
+  width:2px;height:24px;
+  background:#C4B8D8;
+}
+
+/* ── pre-app row ── */
+.pre-app{
+  display:flex;
+  justify-content:center;
+  gap:0;
+  margin-top:24px;
+  position:relative;
+}
+.pre-app::before{
+  content:'';
+  position:absolute;
+  top:0;
+  left:50%;
+  transform:translateX(-50%);
+  width:2px;height:24px;
+  background:#C4B8D8;
+  top:-24px;
+}
+.pre-app-inner{
+  display:flex;
+  gap:0;
+  align-items:flex-start;
+  position:relative;
+}
+.pre-app-inner::before{
+  content:'';
+  position:absolute;
+  top:20px;
+  left:0;right:0;
+  height:2px;
+  background:#C4B8D8;
+}
+
+.flow-step{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:0;
+  position:relative;
+  padding:0 8px;
+}
+.flow-node{
+  background:#fff;
+  border:1px solid rgba(107,79,160,.18);
+  border-radius:10px;
+  padding:9px 18px;
+  font-size:.8rem;
+  font-weight:500;
+  color:#1A1624;
+  white-space:nowrap;
+  position:relative;
+  z-index:1;
+}
+.flow-arrow{
+  font-size:.75rem;
+  color:#6B4FA0;
+  padding:0 2px;
+  line-height:42px;
+  align-self:flex-start;
+  margin-top:0;
+}
+.pre-label{
+  font-size:.75rem;
+  color:#6B4FA0;
+  margin-top:6px;
+  text-align:center;
+  font-weight:500;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+
+/* ── connector to tabs ── */
+.to-tabs{
+  display:flex;
+  justify-content:center;
+  margin:0;
+  position:relative;
+  height:48px;
+}
+.to-tabs::before{
+  content:'';
+  position:absolute;
+  left:50%;top:0;
+  transform:translateX(-50%);
+  width:2px;height:24px;
+  background:#C4B8D8;
+}
+.to-tabs::after{
+  content:'';
+  position:absolute;
+  left:12.5%;right:12.5%;
+  bottom:0;
+  height:2px;
+  background:#C4B8D8;
+}
+
+/* ── tab columns ── */
+.tabs-row{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr 1fr;
+  gap:12px;
+  margin-top:0;
+}
+.tab-col{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:0;
+  position:relative;
+}
+.tab-col::before{
+  content:'';
+  position:absolute;
+  top:-24px;left:50%;
+  transform:translateX(-50%);
+  width:2px;height:24px;
+  background:#C4B8D8;
+}
+.tab-header{
+  width:100%;
+  border-radius:12px;
+  padding:12px 14px;
+  font-family:'Ibarra Real Nova',serif;
+  font-size:1rem;
+  font-weight:600;
+  text-align:center;
+  color:#fff;
+  position:relative;
+}
+.tab-explore{ background:#6B4FA0; }
+.tab-tools  { background:#1F7A6A; }
+.tab-entries{ background:#9B6010; }
+.tab-patterns{ background:#2D5A8E; }
+
+.tab-header::after{
+  content:'';
+  position:absolute;
+  bottom:-16px;left:50%;
+  transform:translateX(-50%);
+  width:2px;height:16px;
+  background:#C4B8D8;
+}
+
+.children{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  margin-top:16px;
+  position:relative;
+}
+.children::before{
+  content:'';
+  position:absolute;
+  left:50%;top:0;
+  transform:translateX(-50%);
+  width:2px;
+  height:100%;
+  background:#E8E3F0;
+  z-index:0;
+}
+
+.child-node{
+  background:#fff;
+  border:1px solid rgba(107,79,160,.14);
+  border-radius:9px;
+  padding:8px 12px;
+  font-size:.75rem;
+  font-weight:500;
+  color:#1A1624;
+  text-align:center;
+  position:relative;
+  z-index:1;
+  margin:4px 0;
+}
+.child-node.sub{
+  margin-left:16px;
+  margin-right:0;
+  font-size:.75rem;
+  background:#F7F4F0;
+  color:#6E617E;
+  border-color:rgba(107,79,160,.1);
+}
+.child-node.deep{
+  margin-left:28px;
+  font-size:.75rem;
+  background:#F0EDF7;
+  color:#6B4FA0;
+  border-color:rgba(107,79,160,.2);
+}
+
+/* tool children colored */
+.tc-breathing{ background:rgba(31,122,106,.07); border-color:rgba(31,122,106,.18); }
+.tc-expression{ background:rgba(155,96,16,.07); border-color:rgba(155,96,16,.18); }
+.tc-grounding{ background:rgba(45,90,142,.07); border-color:rgba(45,90,142,.18); }
+.tc-connection{ background:rgba(192,57,43,.07); border-color:rgba(192,57,43,.18); }
+.tc-interactive{ background:rgba(107,79,160,.07); border-color:rgba(107,79,160,.18); }
+
+.count-badge{
+  display:inline-block;
+  background:rgba(107,79,160,.1);
+  color:#6B4FA0;
+  border-radius:20px;
+  font-size:.62rem;
+  padding:1px 6px;
+  margin-left:4px;
+  font-weight:600;
+}
+.tc-breathing .count-badge{ background:rgba(31,122,106,.12); color:#1F7A6A; }
+.tc-expression .count-badge{ background:rgba(155,96,16,.12); color:#9B6010; }
+.tc-grounding .count-badge{ background:rgba(45,90,142,.12); color:#2D5A8E; }
+.tc-connection .count-badge{ background:rgba(192,57,43,.12); color:#C0392B; }
+.tc-interactive .count-badge{ background:rgba(107,79,160,.12); color:#6B4FA0; }
+
+.ai-block{
+  background:#F0EDF7;
+  border:1px solid rgba(107,79,160,.2);
+  border-radius:9px;
+  padding:8px 10px;
+  font-size:.75rem;
+  color:#6B4FA0;
+  text-align:center;
+  margin:4px 0;
+  position:relative;
+  z-index:1;
+}
+.ai-block strong{ display:block; font-size:.75rem; color:#6B4FA0; margin-bottom:2px; }
+
+.section-divider{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:32px 0 16px;
+  max-width:900px;
+  margin-left:auto;
+  margin-right:auto;
+}
+.section-divider-line{ flex:1; height:1px; background:#DDD8EA; }
+.section-divider-label{
+  font-size:.75rem;
+  color:#6B4FA0;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  font-weight:600;
+  white-space:nowrap;
+}
+
+.legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  justify-content:center;
+  max-width:900px;
+  margin:48px auto 0;
+}
+.legend-item{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:.75rem;
+  color:#6E617E;
+}
+.legend-dot{
+  width:10px;height:10px;
+  border-radius:50%;
+  flex-shrink:0;
+}
+</style>
+</head>
+<body>
+
+<p class="page-title">Aemona — App Structure</p>
+<p class="page-sub">Navigation Hierarchy · User-Facing View</p>
+
+<div class="chart">
+
+  <!-- Root -->
+  <div class="root">
+    <div class="root-node">Aemona</div>
+  </div>
+
+  <!-- Pre-app linear flow -->
+  <div class="pre-app">
+    <div class="pre-app-inner">
+      <div class="flow-step">
+        <div class="flow-node">Splash</div>
+        <div class="pre-label">Launch</div>
+      </div>
+      <div class="flow-arrow" style="line-height:38px">›</div>
+      <div class="flow-step">
+        <div class="flow-node">Guide</div>
+        <div class="pre-label">Onboarding</div>
+      </div>
+      <div class="flow-arrow" style="line-height:38px">›</div>
+      <div class="flow-step">
+        <div class="flow-node">Auth</div>
+        <div class="pre-label">Sign in</div>
+      </div>
+      <div class="flow-arrow" style="line-height:38px">›</div>
+      <div class="flow-step">
+        <div class="flow-node">Setup <span class="count-badge" style="background:rgba(107,79,160,.1);color:#6B4FA0">9 steps</span></div>
+        <div class="pre-label">Companion + prefs</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connector to tabs -->
+  <div class="to-tabs"></div>
+
+  <!-- 4 main tabs -->
+  <div class="tabs-row">
+
+    <!-- EXPLORE -->
+    <div class="tab-col">
+      <div class="tab-header tab-explore">Explore</div>
+      <div class="children">
+        <div class="child-node">Main Feed</div>
+        <div class="child-node sub">Library</div>
+        <div class="child-node sub">Detail</div>
+        <div class="child-node" style="background:#F0EDF7;border-color:rgba(107,79,160,.2);color:#6B4FA0;font-size:.75rem;margin-top:4px">Find My Words ✦</div>
+        <div class="child-node sub" style="background:#F0EDF7;color:#6B4FA0;border-color:rgba(107,79,160,.15)">Input Modal</div>
+        <div class="child-node sub" style="background:#F0EDF7;color:#6B4FA0;border-color:rgba(107,79,160,.15)">AI Loading</div>
+        <div class="child-node sub" style="background:#F0EDF7;color:#6B4FA0;border-color:rgba(107,79,160,.15)">Questions</div>
+        <div class="child-node sub" style="background:#F0EDF7;color:#6B4FA0;border-color:rgba(107,79,160,.15)">Result</div>
+        <div class="child-node deep">Breathing Tool</div>
+        <div class="child-node deep">Unsent Letter</div>
+        <div class="child-node deep">Note It</div>
+      </div>
+    </div>
+
+    <!-- TOOLS -->
+    <div class="tab-col">
+      <div class="tab-header tab-tools">Tools</div>
+      <div class="children">
+        <div class="child-node">Category Grid</div>
+        <div class="child-node sub tc-breathing">Breathing <span class="count-badge">5</span></div>
+        <div class="child-node sub tc-expression">Expression <span class="count-badge">2</span></div>
+        <div class="child-node sub tc-grounding">Grounding <span class="count-badge">5</span></div>
+        <div class="child-node sub tc-connection">Connection <span class="count-badge">2</span></div>
+        <div class="child-node sub tc-interactive">Interactive <span class="count-badge">4</span></div>
+        <div class="child-node deep" style="background:#E8F3F1;color:#1F7A6A;border-color:rgba(31,122,106,.2)">Tool Experience</div>
+      </div>
+    </div>
+
+    <!-- ENTRIES -->
+    <div class="tab-col">
+      <div class="tab-header tab-entries">Entries</div>
+      <div class="children">
+        <div class="child-node">Entry List</div>
+        <div class="child-node sub">Date Filter</div>
+        <div class="child-node sub">Emotion Tag Filter</div>
+        <div class="child-node sub" style="color:#9B6010;background:#FEF3E2;border-color:rgba(155,96,16,.15)">Entry Detail</div>
+      </div>
+    </div>
+
+    <!-- PATTERNS -->
+    <div class="tab-col">
+      <div class="tab-header tab-patterns">Patterns</div>
+      <div class="children">
+        <div class="child-node">Overview</div>
+        <div class="child-node sub" style="color:#2D5A8E;border-color:rgba(45,90,142,.15)">Emotion Frequency</div>
+        <div class="child-node sub" style="color:#2D5A8E;border-color:rgba(45,90,142,.15)">Streaks</div>
+        <div class="child-node sub" style="color:#2D5A8E;border-color:rgba(45,90,142,.15)">Weekly Heatmap</div>
+        <div class="child-node">Deeper</div>
+        <div class="child-node sub" style="color:#2D5A8E;border-color:rgba(45,90,142,.15)">Pattern Cards</div>
+        <div class="child-node deep" style="background:#E8EDF5;color:#2D5A8E;border-color:rgba(45,90,142,.2)">Pattern Detail</div>
+      </div>
+    </div>
+
+  </div><!-- /tabs-row -->
+
+</div><!-- /chart -->
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#6B4FA0"></div>Tab / Main Screen</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#C4B8D8"></div>Sub-screen (one level deep)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#E0D8ED"></div>Deep screen (two levels)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#F0EDF7;border:1px solid #6B4FA0"></div>AI Flow (Explore → Result)</div>
+  <div class="legend-item" style="font-size:.75rem;color:#6B4FA0;margin-left:8px">✦ Find My Words triggers the full AI flow</div>
+</div>
+
+</body>
+</html>

@@ -61,6 +61,10 @@ button {
   line-height: 1 !important;
 }
 
+.tool-pop .hero h1 {
+  font-size: 34px !important;
+}
+
 .tool-drift .subtitle,
 .tool-pop .subtitle,
 .tool-inner-hear .intro-copy p {

@@ -8,31 +8,31 @@ const GUIDE_SLIDES = [
     title: "It's not that you won't.",
     sub:   "Emotions become clearer when you learn their language.",
     color: "#e8e0f5",
-    background: "assets/WelcomeSectionBG/S0.svg"
+    background: "assets/WelcomeSectionBG/S0.webp"
   },
   {
     title: "You don't have to name it to feel it.",
     sub:   "Aemona meets you where you are — even when that place is just 'off'.",
     color: "#f0e8f8",
-    background: "assets/WelcomeSectionBG/S1.svg"
+    background: "assets/WelcomeSectionBG/S1.webp"
   },
   {
     title: "Step into your inner world.",
     sub:   "Let's see what's waiting there.",
     color: "#ede8f5",
-    background: "assets/WelcomeSectionBG/S2.svg"
+    background: "assets/WelcomeSectionBG/S2.webp"
   },
   {
-    background: "assets/WelcomeSectionBG/S3.svg"
+    background: "assets/WelcomeSectionBG/S3.webp"
   },
   {
-    background: "assets/WelcomeSectionBG/S4.svg"
+    background: "assets/WelcomeSectionBG/S4.webp"
   },
   {
-    background: "assets/WelcomeSectionBG/S5.svg"
+    background: "assets/WelcomeSectionBG/S5.webp"
   },
   {
-    background: "assets/WelcomeSectionBG/S6.svg"
+    background: "assets/WelcomeSectionBG/S6.webp"
   }
 ];
 
@@ -189,5 +189,5 @@ const FALLBACK_PLANET = {
   gradient: "radial-gradient(circle at 35% 35%, #c4b8e8, #9b8ec4 55%, #4a3a6a)",
   description: "Something is stirring beneath the surface. Even if words feel out of reach right now, that is okay — the feeling is still real and worth holding gently.",
   landscape: { joy_sadness: 35, trust_disgust: 55, fear_anger: 40, surprise_anticipation: 50 },
-  tools: ["breath", "unsent"]
+  tools: ["sigh", "letter"]
 };

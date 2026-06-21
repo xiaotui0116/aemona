@@ -1,8 +1,8 @@
 {
   "name": "Aemona",
   "short_name": "Aemona",
-  "description": "Emotional wellness — understand what you feel.",
-  "start_url": "/",
+  "description": "Emotional wellness - understand what you feel.",
+  "start_url": "/?source=pwa",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#1a1624",

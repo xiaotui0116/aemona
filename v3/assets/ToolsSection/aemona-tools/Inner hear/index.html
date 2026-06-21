@@ -1,197 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Inner Hear</title>
+  <title>Still Ripples</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Ibarra+Real+Nova:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    html,
-    body {
-      width: 100%;
-      min-height: 100%;
-      background: #f7f4ef;
-      color: #6C4F88;
-      font-family: Arial, Helvetica, sans-serif;
+    html, body {
+      width: 100%; height: 100%;
+      background: #1a1228;
       overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
     }
 
     .back-home {
-      position: fixed;
-      top: 18px;
-      left: 18px;
-      z-index: 20;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      color: #6C4F88;
-      background: rgba(255, 255, 255, .76);
-      box-shadow: 0 14px 30px rgba(108, 79, 136, .13);
+      position: fixed; top: 18px; left: 18px; z-index: 20;
+      width: 44px; height: 44px; border-radius: 50%;
+      display: grid; place-items: center;
+      color: rgba(255,255,255,.7);
+      background: rgba(255,255,255,.1);
+      box-shadow: 0 14px 30px rgba(0,0,0,.3);
       text-decoration: none;
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
-
     .back-home svg {
-      width: 21px;
-      height: 21px;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
+      width: 21px; height: 21px;
+      fill: none; stroke: currentColor;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
     }
 
-    .inner-hear {
-      position: relative;
-      width: 100vw;
-      height: 100dvh;
-      display: grid;
-      place-items: center;
-      background:
-        radial-gradient(circle at 50% 46%, rgba(255, 255, 255, .74), transparent 44%),
-        #f7f4ef;
+    canvas {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
     }
 
-    .noise-video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      opacity: .92;
-      filter: saturate(.82) contrast(.95);
-    }
-
-    .intro-copy {
-      position: fixed;
-      left: 50%;
-      bottom: clamp(42px, 8vh, 78px);
-      z-index: 10;
-      width: min(78vw, 420px);
+    .hint {
+      position: fixed; left: 50%; bottom: clamp(52px, 9vh, 90px);
       transform: translateX(-50%);
       text-align: center;
       pointer-events: none;
-      text-shadow: 0 1px 14px rgba(255, 255, 255, .78);
-      transition: opacity .6s ease, transform .6s ease;
+      transition: opacity .6s ease;
     }
-
-    .intro-copy.is-softened {
-      opacity: .22;
-      transform: translateX(-50%) translateY(10px);
+    .hint h1 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: clamp(28px, 7vw, 42px);
+      font-weight: 600; line-height: 1;
+      color: rgba(255,255,255,.85);
     }
-
-    .intro-copy h1 {
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(34px, 8vw, 54px);
-      line-height: 1;
-      font-weight: 600;
-      letter-spacing: 0;
+    .hint p {
+      margin-top: 10px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: clamp(12px, 3.2vw, 15px);
+      font-weight: 300; line-height: 1.6;
+      color: rgba(255,255,255,.45);
     }
-
-    .intro-copy p {
-      margin-top: 14px;
-      color: rgba(108, 79, 136, .66);
-      font-size: clamp(13px, 3.4vw, 16px);
-      line-height: 1.6;
-      font-weight: 300;
-    }
-
-    .listen-button {
-      position: fixed;
-      left: 50%;
-      bottom: clamp(158px, 24vh, 220px);
-      z-index: 15;
-      transform: translateX(-50%);
-      min-width: 132px;
-      height: 46px;
-      border: 0;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, .78);
-      color: #6C4F88;
-      font-size: 13px;
-      font-weight: 500;
-      box-shadow:
-        0 18px 42px rgba(108, 79, 136, .16),
-        inset 0 1px 0 rgba(255, 255, 255, .85);
-      backdrop-filter: blur(12px);
-      cursor: pointer;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .28s ease, transform .28s ease;
-    }
-
-    .listen-button.is-visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .listen-button:active {
-      transform: translateX(-50%) scale(.97);
-    }
+    .hint.hidden { opacity: 0; }
   </style>
   <link rel="stylesheet" href="../aemona-embedded.css?v=20260611-2">
 </head>
-
 <body class="tool-inner-hear">
   <a class="back-home" href="../index.html" aria-label="Back to tools">
-    <svg viewBox="0 0 24 24">
-      <path d="m15 18-6-6 6-6"></path>
-    </svg>
+    <svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg>
   </a>
 
-  <main class="inner-hear">
-    <video
-      class="noise-video"
-      src="./white%20noise%20with%20touch%20design.mp4"
-      playsinline
-      loop
-      preload="auto"
-    ></video>
+  <canvas id="c"></canvas>
 
-    <section class="intro-copy" aria-label="Inner Hear guidance">
-      <h1>Inner Hear</h1>
-      <p>Let the noise sit beside you. Watch the surface until your attention finds a slower rhythm.</p>
-    </section>
-
-    <button class="listen-button" type="button">Tap to listen</button>
-  </main>
+  <div class="hint" id="hint">
+    <h1>Still Ripples</h1>
+    <p>Touch to release.<br>Watch each feeling spread and fade.</p>
+  </div>
 
   <script>
-    const video = document.querySelector('.noise-video');
-    const button = document.querySelector('.listen-button');
-    const copy = document.querySelector('.intro-copy');
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const hint = document.getElementById('hint');
+    let ripples = [];
+    let touched = false;
 
-    function softenCopy() {
-      copy.classList.add('is-softened');
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
     }
+    resize();
+    window.addEventListener('resize', resize);
 
-    async function startSound() {
-      try {
-        video.muted = false;
-        video.volume = 0.64;
-        await video.play();
-        button.classList.remove('is-visible');
-        softenCopy();
-      } catch (error) {
-        button.classList.add('is-visible');
+    // Palette: deep purple to soft lavender tones
+    const COLORS = [
+      [180, 130, 220],  // lavender
+      [140, 100, 200],  // violet
+      [200, 160, 240],  // light purple
+      [120, 170, 220],  // periwinkle blue
+      [220, 170, 200],  // rose lavender
+    ];
+
+    function addRipple(x, y) {
+      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      ripples.push({
+        x, y,
+        r: 0,
+        maxR: Math.min(canvas.width, canvas.height) * (0.55 + Math.random() * 0.25),
+        color,
+        alpha: 0.72,
+        speed: 1.8 + Math.random() * 1.2,
+        rings: Math.floor(2 + Math.random() * 2)
+      });
+      if (!touched) {
+        touched = true;
+        hint.classList.add('hidden');
       }
     }
 
-    button.addEventListener('click', startSound);
-    window.addEventListener('pointerdown', startSound, { once: true });
-    window.addEventListener('keydown', startSound, { once: true });
+    function draw(ts) {
+      requestAnimationFrame(draw);
 
-    startSound();
+      // Fade background
+      ctx.fillStyle = 'rgba(26,18,40,0.18)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ripples = ripples.filter(rp => rp.alpha > 0.01);
+
+      for (const rp of ripples) {
+        rp.r   += rp.speed;
+        rp.alpha *= 0.978;
+
+        for (let ring = 0; ring < rp.rings; ring++) {
+          const ro = ring * 22;
+          const r  = Math.max(0, rp.r - ro);
+          if (r <= 0) continue;
+          const fade = Math.max(0, rp.alpha * (1 - ring * 0.28));
+          if (fade < 0.01 || r > rp.maxR) continue;
+
+          const edgeFade = 1 - (r / rp.maxR);
+          const a = fade * edgeFade;
+
+          ctx.beginPath();
+          ctx.arc(rp.x, rp.y, r, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${rp.color[0]},${rp.color[1]},${rp.color[2]},${a})`;
+          ctx.lineWidth   = Math.max(0.5, 2.2 * edgeFade);
+          ctx.stroke();
+        }
+      }
+    }
+
+    requestAnimationFrame(draw);
+
+    function onTouch(e) {
+      e.preventDefault();
+      const touches = e.changedTouches || [e];
+      for (const t of touches) {
+        const rect = canvas.getBoundingClientRect();
+        addRipple(t.clientX - rect.left, t.clientY - rect.top);
+      }
+    }
+
+    canvas.addEventListener('touchstart',  onTouch, { passive: false });
+    canvas.addEventListener('touchmove',   onTouch, { passive: false });
+    canvas.addEventListener('pointerdown', onTouch);
   </script>
 </body>
-
 </html>

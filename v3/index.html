@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual">
   <title>Aemona</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#1a1624">
@@ -17,7 +17,11 @@
   <link rel="preload" href="assets/Components/Toolbar-tools.svg" as="image">
   <link rel="preload" href="assets/Components/Toolbar-entries.svg" as="image">
   <link rel="preload" href="assets/Components/Toolbar-pattern.svg" as="image">
-  <link rel="stylesheet" href="style.css?v=20260612-5">
+  <link rel="preload" href="assets/Button/ContinueButton-default.svg" as="image">
+  <link rel="preload" href="assets/Button/ContinueButton-activated.svg" as="image">
+  <link rel="preload" href="assets/Button/IacceptButton-default.svg" as="image">
+  <link rel="preload" href="assets/Button/iacceptButton-activated.svg" as="image">
+  <link rel="stylesheet" href="style.css?v=20260619-09">
 </head>
 <body>
 <div id="app">
@@ -45,7 +49,7 @@
 
     </div>
     <div class="guide-bottom">
-      <button class="btn" id="guide-btn" onclick="guideNext()">Continue</button>
+      <button class="guide-asset-btn guide-continue-btn" id="guide-btn" onclick="guideNext()" aria-label="Continue"></button>
     </div>
   </div>
 
@@ -54,7 +58,7 @@
   ══════════════════════════════════════ -->
   <div class="page" id="auth">
     <div class="auth-view active" id="auth-create-view">
-      <button class="auth-asset-button asset-signin" onclick="switchAuthView('signin')" aria-label="Sign in"></button>
+      <button class="auth-asset-button asset-signin" onclick="redirectAuthToBeta('signin')" aria-label="Sign in"></button>
       <button class="auth-asset-button asset-google" onclick="socialLogin('google')" aria-label="Continue with Google"></button>
       <button class="auth-asset-button asset-phone" onclick="showPhoneUnsupported()" aria-label="Continue with phone"></button>
       <button class="auth-asset-button asset-apple" onclick="showAppleUnsupported()" aria-label="Continue with Apple"></button>
@@ -75,7 +79,7 @@
       <button class="auth-asset-button asset-phone" onclick="showPhoneUnsupported()" aria-label="Continue with phone"></button>
       <button class="auth-asset-button asset-apple" onclick="showAppleUnsupported()" aria-label="Continue with Apple"></button>
       <button class="auth-asset-button asset-email-button" onclick="openEmailLogin('login')" aria-label="Continue with Email"></button>
-      <button class="auth-asset-button asset-create" onclick="switchAuthView('create')" aria-label="Create a free account"></button>
+      <button class="auth-asset-button asset-create" onclick="redirectAuthToBeta('create')" aria-label="Create a free account"></button>
       <button class="auth-beta-link login-beta-link" onclick="openBetaAccess('login')">Enter beta access code</button>
     </div>
 
@@ -150,6 +154,7 @@
       <h2 class="serif">Beta access</h2>
       <div class="auth-err" id="beta-err"></div>
       <input type="text" id="beta-code" placeholder="Enter your beta access code" autocomplete="off" onkeydown="if(event.key==='Enter')submitBetaCode()">
+      <div class="beta-code-hint">Hint: we recommend using the beta code <strong>aemona-2026</strong>.</div>
       <button class="btn" onclick="submitBetaCode()">Enter Aemona</button>
     </div>
   </div>
@@ -200,11 +205,6 @@
       <!-- AI sensitivity card -->
       <div id="sens-card-explore"></div>
 
-      <!-- Today's records -->
-      <div class="recent-section">
-        <div class="section-label">Today's records</div>
-        <div id="explore-hist-list"></div>
-      </div>
     </div>
     <div class="explore-promo" id="explore-promo" aria-hidden="true">
       <button class="explore-promo-backdrop" type="button" onclick="closeExplorePromo()" aria-label="Close welcome card"></button>
@@ -219,6 +219,7 @@
        INPUT MODAL (story entry)
   ══════════════════════════════════════ -->
   <div class="page" id="input-modal">
+    <div class="unpack-heading">What's on your mind right now?</div>
     <button class="unpack-close" type="button" onclick="go('explore')" aria-label="Close"></button>
     <button class="unpack-chip-asset" type="button" onclick="toggleEntryModeMenu()" aria-label="Choose entry mode"></button>
     <div class="entry-mode-menu" id="entry-mode-menu">
@@ -320,7 +321,7 @@
 
     <!-- Sticky footer -->
     <div class="result-footer">
-      <button class="btn" onclick="go('explore')">Done</button>
+      <button class="result-continue-btn" onclick="go('explore')" aria-label="Done"></button>
     </div>
   </div>
 
@@ -387,7 +388,7 @@
 
   <div class="page" id="tool-experience">
     <button class="tool-experience-close" type="button" onclick="closeToolExperience()" aria-label="Back to tool category"></button>
-    <iframe id="tool-experience-frame" title="Aemona interactive tool"></iframe>
+    <iframe id="tool-experience-frame" title="Aemona interactive tool" allow="microphone; camera; autoplay"></iframe>
   </div>
 
   <div class="page" id="native-tool">
@@ -407,14 +408,14 @@
     </div>
     <div class="month-tabs" id="month-tabs"></div>
     <div class="entries-cal-body">
-      <div class="entries-subtitle">All the emotions you felt</div>
+      <div class="entries-mood-palette" id="entries-mood-palette"></div>
       <div class="e-cal-wdays">
         <span>SUN</span><span>MON</span><span>TUE</span><span>WED</span>
         <span>THU</span><span>FRI</span><span>SAT</span>
       </div>
       <div class="e-cal-grid" id="e-cal-grid"></div>
       <div class="entries-door-preview" id="entries-door-preview">
-        <div class="entries-preview-copy"><strong class="serif">A feeling lives behind each door.</strong><span>Tap a colored door to reveal it. Double-click to read the full entry.</span></div>
+        <div class="entries-preview-copy"><strong class="serif">A feeling lives behind each door.</strong><span>Tap a colored door to reveal it.</span></div>
       </div>
     </div>
   </div>
@@ -694,19 +695,19 @@
   <div class="bottom-nav-scrim" id="bottom-nav-scrim" aria-hidden="true"></div>
   <nav class="bottom-nav" id="bottom-nav">
     <div class="nav-item active" onclick="go('explore')">
-      <div class="nav-icon">△</div>
+      <div class="nav-icon" aria-hidden="true"></div>
       <div>Explore</div>
     </div>
     <div class="nav-item" onclick="go('tools-page')">
-      <div class="nav-icon">⬡</div>
+      <div class="nav-icon" aria-hidden="true"></div>
       <div>Tools</div>
     </div>
     <div class="nav-item" onclick="go('entries-page')">
-      <div class="nav-icon">◻</div>
+      <div class="nav-icon" aria-hidden="true"></div>
       <div>Entries</div>
     </div>
     <div class="nav-item" onclick="go('patterns-page')">
-      <div class="nav-icon">◻</div>
+      <div class="nav-icon" aria-hidden="true"></div>
       <div>Patterns</div>
     </div>
   </nav>
@@ -715,30 +716,45 @@
 
 <script type="module" src="firebase-auth.js"></script>
 <script src="data.js"></script>
-<script src="app.js?v=20260612-5"></script>
+<script src="app.js?v=20260619-09"></script>
 <script>
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
-  }
-  // Prevent iOS keyboard from causing layout jump
-  (function() {
-    let scrollY = 0;
-    document.addEventListener('focusin', function(e) {
-      if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
-        scrollY = window.scrollY;
+    window.addEventListener('load', async () => {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(registration => registration.unregister()));
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
       }
-    }, true);
-    document.addEventListener('focusout', function() {
-      window.scrollTo(0, scrollY);
-    }, true);
-  })();
+    });
+  }
+  // Prevent iOS keyboard from causing layout jump without fighting internal page scroll.
+  window.addEventListener('scroll', function() {
+    if (document.getElementById('input-modal')?.classList.contains('show')) return;
+    if (window.scrollY !== 0) requestAnimationFrame(() => window.scrollTo(0, 0));
+  }, { passive: true });
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(type => {
+    window.addEventListener(type, event => event.preventDefault(), { passive: false });
+  });
+  document.addEventListener('touchmove', event => {
+    if (event.touches && event.touches.length > 1) event.preventDefault();
+  }, { passive: false });
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', event => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) event.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
 </script>
 <script>
   // Burn the loop animation
   function burnLoop() {
     const ta  = document.getElementById('loop-text');
     const txt = ta.value.trim();
-    if (!txt) { alert('Write something first.'); return; }
+    if (!txt) {
+      if (typeof showToast === 'function') showToast('Write something first.');
+      return;
+    }
     ta.style.transition = 'opacity 0.8s, transform 0.8s';
     ta.style.opacity    = '0';
     ta.style.transform  = 'scale(0.95)';
@@ -746,7 +762,7 @@
       ta.value        = '';
       ta.style.opacity    = '1';
       ta.style.transform  = 'scale(1)';
-      alert('✦ Released. It doesn\'t need to stay.');
+      if (typeof showToast === 'function') showToast('Released. It doesn\'t need to stay.');
     }, 900);
   }
 </script>
