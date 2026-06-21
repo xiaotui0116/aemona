@@ -905,22 +905,22 @@ function setupOptionSrc(question, option, mode) {
 }
 
 function setupBackgroundImage() {
-  if (setupStep <= 3) return `assets/SetupSectionBG/S${setupStep - 1}.webp`;
+  if (setupStep <= 3) return `assets/SetupSectionBG/S${setupStep - 1}.svg`;
 
   const companionId = selectedCompanion?.id || 'milo';
   const fileByCompanion = {
-    avis: 'Avis.webp',
-    echo: 'Echo.webp',
-    milo: 'milo.webp',
-    sila: 'Sila.webp'
+    avis: 'Avis.svg',
+    echo: 'Echo.svg',
+    milo: 'milo.svg',
+    sila: 'Sila.svg'
   };
-  const fileName = fileByCompanion[companionId] || 'milo.webp';
+  const fileName = fileByCompanion[companionId] || 'milo.svg';
   if (setupStep === 4) return `assets/SetupSectionBG/S3/${fileName}`;
   if (setupStep === 5) return `assets/SetupSectionBG/S4/${fileName.replace('milo', 'Milo')}`;
   if (setupStep === 6) return `assets/SetupSectionBG/S5/${fileName.replace('milo', 'Milo')}`;
-  if (setupStep === 7) return 'assets/SetupSectionBG/S6.webp';
+  if (setupStep === 7) return 'assets/SetupSectionBG/S6.svg';
   if (setupStep === 8) return 'assets/SetupSectionBG/S7.svg';
-  if (setupStep === 9) return 'assets/SetupSectionBG/S8.webp';
+  if (setupStep === 9) return 'assets/SetupSectionBG/S8.svg';
   return `assets/SetupSectionBG/S3/${fileName}`;
 }
 
