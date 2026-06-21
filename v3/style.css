@@ -668,7 +668,9 @@ input.reg-input:focus { border-color: var(--purple); background: rgba(255,255,25
   width: 166px;
   height: 178px;
   border: 0;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 36px;
+  box-shadow: 0 16px 36px rgba(92, 71, 112, 0.08);
   padding: 0;
   cursor: pointer;
   transition: transform 0.15s ease;
